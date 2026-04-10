@@ -4,7 +4,7 @@ This repo is the base I use for my own SaaS projects.
 
 For the last 10 years I kept rebuilding the same plumbing over and over:
 authentication, route protection, dashboard shells, role handling, email flows,
-backend wiring, shared UI pieces, and the usual project scaffolding. This
+backend wiring, and the usual project scaffolding. This
 repository is my attempt to keep that work in one place and evolve it in public.
 
 It is opinionated on purpose. A lot of choices here reflect personal taste:
@@ -20,7 +20,7 @@ The goal is to have a reusable starting point for building a SaaS product with:
 - authentication and session handling
 - role-aware protected routes
 - a dashboard app
-- shared UI/config packages
+- shared config packages
 - a monorepo setup that is easy to iterate on
 
 ## What is currently in the repo
@@ -41,12 +41,9 @@ The goal is to have a reusable starting point for building a SaaS product with:
   - public auth routes: `/`, `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
   - protected areas for `USER` and `SUPERADMIN`
   - role-aware redirects after authentication
-  - dashboard layout baseline and shared UI primitives
+  - dashboard layout baseline and app-local `shadcn/ui` components
 
 ### Packages
-
-- `packages/ui`
-  - shared React UI components
 
 - `packages/eslint-config`
   - shared ESLint config
@@ -92,7 +89,6 @@ apps/
   dashboard/  Vite + React dashboard
 
 packages/
-  ui/                 shared UI components
   eslint-config/      shared lint config
   typescript-config/  shared TS config
 ```

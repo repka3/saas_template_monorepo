@@ -5,8 +5,8 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "format": "prettier --write \"apps/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
-    "format:check": "prettier --check \"apps/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
+    "format": "prettier --no-error-on-unmatched-pattern --write \"apps/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
+    "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
