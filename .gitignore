@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build and cache output
+.turbo/
+**/.turbo/
+dist/
+**/dist/
+.cache/
+**/.cache/
+.vite/
+**/.vite/
+.tmp/
+**/.tmp/
+coverage/
+**/coverage/
+build/
+**/build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
