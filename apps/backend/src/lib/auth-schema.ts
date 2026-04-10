@@ -27,5 +27,4 @@ export const deriveDefaultNameFromEmail = (email: string) => {
   return localPart.replace(/[._-]+/g, ' ').trim() || 'user'
 }
 
-export const getHomePathForRole = (systemRole: SystemRole) =>
-  systemRole === 'SUPERADMIN' ? '/superadmin' : '/dashboard'
+export const getHomePathForRole = (systemRole: SystemRole) => (systemRole === 'SUPERADMIN' ? '/superadmin' : '/dashboard')

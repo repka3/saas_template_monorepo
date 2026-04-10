@@ -5,13 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
 const getInitial = (value: string | null | undefined) => value?.trim().charAt(0).toUpperCase() || 'U'
@@ -39,18 +33,14 @@ export default function TopBar() {
       <SidebarTrigger className="-ml-1" />
 
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
-          L
-        </div>
+        <div className="flex size-9 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm">L</div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight">Fake Logo</p>
         </div>
       </div>
 
       <DropdownMenu>
-        <DropdownMenuTrigger
-          render={<Button className="ml-auto min-w-0 gap-2 rounded-full px-2.5" variant="outline" />}
-        >
+        <DropdownMenuTrigger render={<Button className="ml-auto min-w-0 gap-2 rounded-full px-2.5" variant="outline" />}>
           <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
             {getInitial(user.name || user.email)}
           </span>

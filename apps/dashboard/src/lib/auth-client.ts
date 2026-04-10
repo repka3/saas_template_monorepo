@@ -35,8 +35,7 @@ export const authClient = createAuthClient({
 export type AuthSession = typeof authClient.$Infer.Session
 export type AuthSessionUser = AuthSession['user']
 
-export const getHomePathForRole = (systemRole: string | null | undefined) =>
-  systemRole === 'SUPERADMIN' ? '/superadmin' : '/dashboard'
+export const getHomePathForRole = (systemRole: string | null | undefined) => (systemRole === 'SUPERADMIN' ? '/superadmin' : '/dashboard')
 
 export const deriveDefaultNameFromEmail = (email: string) => {
   const localPart = email.split('@')[0]?.trim()

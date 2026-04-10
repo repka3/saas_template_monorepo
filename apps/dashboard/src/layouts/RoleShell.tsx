@@ -39,11 +39,7 @@ export default function RoleShell({ homePath, roleLabel }: RoleShellProps) {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={pathname === homePath}
-                    render={<NavLink end to={homePath} />}
-                    tooltip="Home"
-                  >
+                  <SidebarMenuButton isActive={pathname === homePath} render={<NavLink end to={homePath} />} tooltip="Home">
                     <House />
                     <span>Home</span>
                   </SidebarMenuButton>

@@ -22,17 +22,7 @@ type AuthEmailOptions = {
   to: string
 }
 
-const renderEmailFrame = ({
-  body,
-  eyebrow,
-  footer,
-  title,
-}: {
-  body: string
-  eyebrow: string
-  footer: string
-  title: string
-}) => `
+const renderEmailFrame = ({ body, eyebrow, footer, title }: { body: string; eyebrow: string; footer: string; title: string }) => `
   <div style="background:#f4efe6;padding:32px;font-family:Arial,sans-serif;color:#1d1a17;">
     <div style="max-width:560px;margin:0 auto;background:#fffdf9;border:1px solid #e6dccf;border-radius:24px;overflow:hidden;">
       <div style="padding:32px 32px 24px;background:linear-gradient(135deg,#17324d 0%,#314f6d 100%);color:#fffdf9;">
@@ -59,13 +49,7 @@ export const sendAuthEmail = async ({ html, subject, text, to }: AuthEmailOption
   logger.info({ messageId: info.messageId, to }, 'auth email sent')
 }
 
-export const sendVerificationEmailMessage = async ({
-  to,
-  verificationUrl,
-}: {
-  to: string
-  verificationUrl: string
-}) => {
+export const sendVerificationEmailMessage = async ({ to, verificationUrl }: { to: string; verificationUrl: string }) => {
   const html = renderEmailFrame({
     eyebrow: 'Email Verification',
     title: 'Verify your email address',

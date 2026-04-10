@@ -1,0 +1,12 @@
+.agents/
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+.cache/
+.vite/
+.tmp/
+**/src/generated/
+pnpm-lock.yaml
+skills-lock.json

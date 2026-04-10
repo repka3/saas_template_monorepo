@@ -5,15 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react'
 
 function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {
-  return (
-    <nav
-      role="navigation"
-      aria-label="pagination"
-      data-slot="pagination"
-      className={cn('mx-auto flex w-full justify-center', className)}
-      {...props}
-    />
-  )
+  return <nav role="navigation" aria-label="pagination" data-slot="pagination" className={cn('mx-auto flex w-full justify-center', className)} {...props} />
 }
 
 function PaginationContent({ className, ...props }: React.ComponentProps<'ul'>) {
@@ -36,18 +28,12 @@ function PaginationLink({ className, isActive, size = 'icon', ...props }: Pagina
       size={size}
       className={cn(className)}
       nativeButton={false}
-      render={
-        <a aria-current={isActive ? 'page' : undefined} data-slot="pagination-link" data-active={isActive} {...props} />
-      }
+      render={<a aria-current={isActive ? 'page' : undefined} data-slot="pagination-link" data-active={isActive} {...props} />}
     />
   )
 }
 
-function PaginationPrevious({
-  className,
-  text = 'Previous',
-  ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+function PaginationPrevious({ className, text = 'Previous', ...props }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
   return (
     <PaginationLink aria-label="Go to previous page" size="default" className={cn('pl-1.5!', className)} {...props}>
       <ChevronLeftIcon data-icon="inline-start" />
@@ -56,11 +42,7 @@ function PaginationPrevious({
   )
 }
 
-function PaginationNext({
-  className,
-  text = 'Next',
-  ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+function PaginationNext({ className, text = 'Next', ...props }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
   return (
     <PaginationLink aria-label="Go to next page" size="default" className={cn('pr-1.5!', className)} {...props}>
       <span className="hidden sm:block">{text}</span>
@@ -83,12 +65,4 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'
   )
 }
 
-export {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-}
+export { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious }

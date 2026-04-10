@@ -58,10 +58,7 @@ function SheetContent({
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close
-            data-slot="sheet-close"
-            render={<Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />}
-          >
+          <SheetPrimitive.Close data-slot="sheet-close" render={<Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />}>
             <XIcon />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
@@ -80,23 +77,11 @@ function SheetFooter({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
-  return (
-    <SheetPrimitive.Title
-      data-slot="sheet-title"
-      className={cn('font-heading text-base font-medium text-foreground', className)}
-      {...props}
-    />
-  )
+  return <SheetPrimitive.Title data-slot="sheet-title" className={cn('font-heading text-base font-medium text-foreground', className)} {...props} />
 }
 
 function SheetDescription({ className, ...props }: SheetPrimitive.Description.Props) {
-  return (
-    <SheetPrimitive.Description
-      data-slot="sheet-description"
-      className={cn('text-sm text-muted-foreground', className)}
-      {...props}
-    />
-  )
+  return <SheetPrimitive.Description data-slot="sheet-description" className={cn('text-sm text-muted-foreground', className)} {...props} />
 }
 
 export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription }

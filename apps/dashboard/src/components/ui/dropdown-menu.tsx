@@ -26,13 +26,7 @@ function DropdownMenuContent({
 }: MenuPrimitive.Popup.Props & Pick<MenuPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>) {
   return (
     <MenuPrimitive.Portal>
-      <MenuPrimitive.Positioner
-        className="isolate z-50 outline-none"
-        align={align}
-        alignOffset={alignOffset}
-        side={side}
-        sideOffset={sideOffset}
-      >
+      <MenuPrimitive.Positioner className="isolate z-50 outline-none" align={align} alignOffset={alignOffset} side={side} sideOffset={sideOffset}>
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
           className={cn(
@@ -162,10 +156,7 @@ function DropdownMenuCheckboxItem({
       checked={checked}
       {...props}
     >
-      <span
-        className="pointer-events-none absolute right-2 flex items-center justify-center"
-        data-slot="dropdown-menu-checkbox-item-indicator"
-      >
+      <span className="pointer-events-none absolute right-2 flex items-center justify-center" data-slot="dropdown-menu-checkbox-item-indicator">
         <MenuPrimitive.CheckboxItemIndicator>
           <CheckIcon />
         </MenuPrimitive.CheckboxItemIndicator>
@@ -197,10 +188,7 @@ function DropdownMenuRadioItem({
       )}
       {...props}
     >
-      <span
-        className="pointer-events-none absolute right-2 flex items-center justify-center"
-        data-slot="dropdown-menu-radio-item-indicator"
-      >
+      <span className="pointer-events-none absolute right-2 flex items-center justify-center" data-slot="dropdown-menu-radio-item-indicator">
         <MenuPrimitive.RadioItemIndicator>
           <CheckIcon />
         </MenuPrimitive.RadioItemIndicator>
@@ -211,23 +199,14 @@ function DropdownMenuRadioItem({
 }
 
 function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
-  return (
-    <MenuPrimitive.Separator
-      data-slot="dropdown-menu-separator"
-      className={cn('-mx-1 my-1 h-px bg-border', className)}
-      {...props}
-    />
-  )
+  return <MenuPrimitive.Separator data-slot="dropdown-menu-separator" className={cn('-mx-1 my-1 h-px bg-border', className)} {...props} />
 }
 
 function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
       data-slot="dropdown-menu-shortcut"
-      className={cn(
-        'ml-auto text-xs tracking-widest text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground',
-        className,
-      )}
+      className={cn('ml-auto text-xs tracking-widest text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground', className)}
       {...props}
     />
   )

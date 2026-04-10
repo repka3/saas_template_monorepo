@@ -12,13 +12,7 @@ import SuperAdminLayout from '@/layouts/SuperAdminLayout'
 import UserLayout from '@/layouts/UserLayout'
 import HomeSuperadmin from '@/pages/superadmin/HomeSuperadmin'
 import HomeUser from '@/pages/user/HomeUser'
-import {
-  authClient,
-  deriveDefaultNameFromEmail,
-  getHomePathForRole,
-  toAbsoluteAppUrl,
-  type AuthSessionUser,
-} from '@/lib/auth-client'
+import { authClient, deriveDefaultNameFromEmail, getHomePathForRole, toAbsoluteAppUrl, type AuthSessionUser } from '@/lib/auth-client'
 import { useAuth } from '@/hooks/use-auth'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -82,12 +76,10 @@ function LandingPage() {
             <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-foreground/10 bg-background/70 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-muted-foreground uppercase backdrop-blur">
               Reusable Auth Baseline
             </div>
-            <CardTitle className="max-w-2xl text-4xl leading-tight sm:text-5xl">
-              Generic authentication, seeded role routing, and email flows.
-            </CardTitle>
+            <CardTitle className="max-w-2xl text-4xl leading-tight sm:text-5xl">Generic authentication, seeded role routing, and email flows.</CardTitle>
             <CardDescription className="max-w-xl text-base leading-7">
-              This dashboard is now a copyable auth shell: public sign-in and sign-up flows, reset and verification
-              routes, and separate authenticated destinations for users and seeded superadmins.
+              This dashboard is now a copyable auth shell: public sign-in and sign-up flows, reset and verification routes, and separate authenticated
+              destinations for users and seeded superadmins.
             </CardDescription>
           </CardHeader>
           <CardContent className="px-0">
@@ -114,9 +106,7 @@ function LandingPage() {
         <Card className="border border-foreground/10 bg-background/88 shadow-2xl shadow-slate-950/8 backdrop-blur">
           <CardHeader>
             <CardTitle>Start from the auth flow</CardTitle>
-            <CardDescription>
-              Public routes stay lightweight. Protected routes are guarded by the Better Auth session and role checks.
-            </CardDescription>
+            <CardDescription>Public routes stay lightweight. Protected routes are guarded by the Better Auth session and role checks.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <LinkButton className="w-full justify-between" to="/login">
@@ -128,8 +118,7 @@ function LandingPage() {
               <ArrowRight />
             </LinkButton>
             <div className="rounded-2xl border border-dashed border-foreground/12 bg-muted/40 p-4 text-sm leading-6 text-muted-foreground">
-              Public registration always creates a standard user. The superadmin route is reserved for the env-seeded
-              bootstrap account.
+              Public registration always creates a standard user. The superadmin route is reserved for the env-seeded bootstrap account.
             </div>
           </CardContent>
         </Card>
@@ -152,13 +141,7 @@ function GuestOnlyRoute() {
   return <Outlet />
 }
 
-function ProtectedRoute({
-  allowedRole,
-  children,
-}: {
-  allowedRole: AuthSessionUser['systemRole']
-  children: ReactNode
-}) {
+function ProtectedRoute({ allowedRole, children }: { allowedRole: AuthSessionUser['systemRole']; children: ReactNode }) {
   const { homePath, isPending, user } = useAuth()
 
   if (isPending) {
@@ -454,12 +437,7 @@ function ResetPasswordPage() {
       ) : (
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Input autoComplete="new-password" name="password" placeholder="New password" type="password" />
-          <Input
-            autoComplete="new-password"
-            name="confirmPassword"
-            placeholder="Confirm new password"
-            type="password"
-          />
+          <Input autoComplete="new-password" name="confirmPassword" placeholder="Confirm new password" type="password" />
           <Button className="w-full justify-between" disabled={isSubmitting} type="submit">
             {isSubmitting ? 'Saving password' : 'Reset password'}
             {isSubmitting ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
@@ -596,8 +574,7 @@ function AuthRouteLayout({
           <CardContent className="space-y-4 px-0">
             <div className="rounded-[1.5rem] border border-foreground/10 bg-background/70 p-5 backdrop-blur">
               <p className="text-sm leading-7 text-muted-foreground">
-                Every auth action is routed through Better Auth directly. No custom session wrapper API is required for
-                the frontend to read user state.
+                Every auth action is routed through Better Auth directly. No custom session wrapper API is required for the frontend to read user state.
               </p>
             </div>
             <LinkButton size="sm" to={alternateAction.href} variant="link">
@@ -621,9 +598,7 @@ function AuthRouteLayout({
 function HighlightCard({ description, icon, title }: { description: string; icon: ReactNode; title: string }) {
   return (
     <div className="rounded-[1.5rem] border border-foreground/10 bg-background/70 p-4 backdrop-blur">
-      <div className="mb-3 inline-flex size-10 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-strong)]">
-        {icon}
-      </div>
+      <div className="mb-3 inline-flex size-10 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-strong)]">{icon}</div>
       <h2 className="text-base font-semibold">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
     </div>
@@ -649,9 +624,7 @@ function PageFrame({ children }: { children: ReactNode }) {
     <div className="relative isolate min-h-screen overflow-hidden">
       <div className="absolute inset-x-0 top-[-10rem] -z-10 h-[28rem] bg-[radial-gradient(circle_at_top,rgba(26,86,138,0.18),transparent_62%)]" />
       <div className="absolute inset-y-0 right-[-12rem] -z-10 w-[28rem] bg-[radial-gradient(circle,rgba(245,158,11,0.12),transparent_62%)]" />
-      <main className="mx-auto flex min-h-screen w-full max-w-7xl items-center px-5 py-10 sm:px-8 lg:px-12">
-        {children}
-      </main>
+      <main className="mx-auto flex min-h-screen w-full max-w-7xl items-center px-5 py-10 sm:px-8 lg:px-12">{children}</main>
     </div>
   )
 }

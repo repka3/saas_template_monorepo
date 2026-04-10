@@ -7,6 +7,7 @@
     "build": "pnpm prisma:generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
     "check-types": "pnpm prisma:generate && tsc --noEmit -p tsconfig.json",
     "prisma:generate": "prisma generate --config prisma.config.ts",
     "prisma:migrate": "prisma migrate dev --config prisma.config.ts",
@@ -20,11 +21,14 @@
     "@types/express": "^5.0.6",
     "@types/nodemailer": "^7.0.3",
     "@types/node": "^25.5.2",
+    "@types/supertest": "^6.0.3",
     "eslint": "^9.39.4",
     "globals": "^17.4.0",
     "prisma": "^7.7.0",
+    "supertest": "^7.1.4",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.6.2",
