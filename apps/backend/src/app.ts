@@ -8,7 +8,7 @@ import { auth } from './lib/auth.js'
 import { env } from './lib/env.js'
 import { logger } from './lib/logger.js'
 import { errorHandler } from './middleware/error-handler.js'
-import { healthRouter } from './routes/health.js'
+import { publicHealthRouter } from './routes/publicHealthRoutes.js'
 
 export const app = express()
 
@@ -38,7 +38,7 @@ app.all('/api/auth/*splat', toNodeHandler(auth))
 
 app.use(express.json())
 
-app.use(healthRouter)
+app.use('/api', publicHealthRouter)
 
 app.use((_req, res) => {
   res.status(404).json({

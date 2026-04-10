@@ -29,3 +29,5 @@ build/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+PLAN.md
