@@ -1,6 +1,21 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+Object.assign(process.env, {
+  NODE_ENV: 'test',
+  PORT: '3005',
+  DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/saas_template_test',
+  BETTER_AUTH_SECRET: 'test-secret-that-is-at-least-thirty-two-chars',
+  BETTER_AUTH_URL: 'http://localhost:3005',
+  CORS_ORIGIN: 'http://localhost:5173',
+  SMTP_HOST: '127.0.0.1',
+  SMTP_PORT: '1025',
+  SMTP_USER: '',
+  SMTP_PASS: '',
+  SMTP_FROM: 'SaaS Template <no-reply@example.test>',
+  LOG_LEVEL: 'silent',
+})
+
 const getSessionMock = vi.fn()
 
 vi.mock('../src/lib/auth.js', () => ({

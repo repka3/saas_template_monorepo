@@ -3,19 +3,21 @@ import { randomUUID } from 'node:crypto'
 import { hashPassword } from 'better-auth/crypto'
 
 import { deriveDefaultNameFromEmail } from '../lib/auth-schema.js'
-import { env } from '../lib/env.js'
 import { prisma } from '../lib/prisma.js'
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
 
 const getSuperadminCredentials = () => {
-  if (!env.SUPERADMIN_EMAIL || !env.SUPERADMIN_PASSWORD) {
+  const email = process.env.SUPERADMIN_EMAIL
+  const password = process.env.SUPERADMIN_PASSWORD
+
+  if (!email || !password) {
     throw new Error('SUPERADMIN_EMAIL and SUPERADMIN_PASSWORD must be set before running the seed.')
   }
 
   return {
-    email: normalizeEmail(env.SUPERADMIN_EMAIL),
-    password: env.SUPERADMIN_PASSWORD,
+    email: normalizeEmail(email),
+    password,
   }
 }
 

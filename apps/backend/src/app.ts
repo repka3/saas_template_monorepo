@@ -19,8 +19,24 @@ app.set('trust proxy', 1)
 app.use(
   pinoHttp({
     logger,
+    quietReqLogger: true,
+    quietResLogger: true,
     customSuccessMessage: () => 'request completed',
     customErrorMessage: () => 'request failed',
+    serializers: {
+      req: (req) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+        query: req.query,
+        params: req.params,
+        remoteAddress: req.remoteAddress,
+        remotePort: req.remotePort,
+      }),
+      res: (res) => ({
+        statusCode: res.statusCode,
+      }),
+    },
   }),
 )
 
