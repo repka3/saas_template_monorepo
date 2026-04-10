@@ -1,21 +1,101 @@
-# Reusable SaaS Auth Template
+# SaaS Project Monorepo
 
-This monorepo is a copyable Better Auth template built around a generic
-email/password flow, role-aware routing, and SMTP-backed email delivery.
+This repo is the base I use for my own SaaS projects.
 
-## Included baseline flow
+For the last 10 years I kept rebuilding the same plumbing over and over:
+authentication, route protection, dashboard shells, role handling, email flows,
+backend wiring, shared UI pieces, and the usual project scaffolding. This
+repository is my attempt to keep that work in one place and evolve it in public.
 
-- Public routes: `/`, `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
-- Protected routes: `/dashboard` for standard users and `/superadmin` for the seeded bootstrap superadmin
-- Public registration always creates a `USER`
-- A single env-driven superadmin can be bootstrapped with `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD`
-- Better Auth remains mounted at `/api/auth/*`
-- Prisma + PostgreSQL back the auth data
+It is opinionated on purpose. A lot of choices here reflect personal taste:
+route structure, dashboard layout, naming, boundaries between apps, and the
+kind of baseline I like to start from. Contributions are welcome, but this is
+not meant to be an enterprise-grade, one-size-fits-all scaffolding kit.
+
+## Purpose
+
+The goal is to have a reusable starting point for building a SaaS product with:
+
+- a backend API
+- authentication and session handling
+- role-aware protected routes
+- a dashboard app
+- shared UI/config packages
+- a monorepo setup that is easy to iterate on
+
+## What is currently in the repo
+
+### Apps
+
+- `apps/backend`
+  - Express 5 API
+  - Better Auth mounted on `/api/auth/*`
+  - Prisma + PostgreSQL
+  - email/password auth
+  - email verification and password reset via SMTP
+  - env-driven bootstrap superadmin seed
+  - example protected and public routes
+
+- `apps/dashboard`
+  - Vite + React 19 app
+  - public auth routes: `/`, `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
+  - protected areas for `USER` and `SUPERADMIN`
+  - role-aware redirects after authentication
+  - dashboard layout baseline and shared UI primitives
+
+### Packages
+
+- `packages/ui`
+  - shared React UI components
+
+- `packages/eslint-config`
+  - shared ESLint config
+
+- `packages/typescript-config`
+  - shared TypeScript config
+
+### Tooling
+
+- Turborepo
+- pnpm workspaces
+- Prisma
+- Vitest on the backend
+
+## What is not here yet
+
+- A proper marketing / landing website built with Astro
+
+Right now `/` lives inside the React dashboard app as a temporary entry point.
+The plan is to add a separate Astro landing page later, and keep the dashboard
+focused on the authenticated product area.
+
+## Scope and expectations
+
+This repo is public because I think the baseline can still be useful to other
+people, especially solo builders and small teams.
+
+That said:
+
+- this is primarily my SaaS project foundation
+- it is intentionally opinionated
+- it may change in ways that fit my workflow first
+- it is useful as a reference or starting point, not as a promise of enterprise-ready abstractions
+
+If you want to contribute, that is welcome. Just keep in mind the project is
+curated more like a personal product base than a neutral framework.
 
 ## Workspace layout
 
-- `apps/backend`: Express API, Better Auth config, Prisma schema, SMTP mailer, seed script
-- `apps/dashboard`: Vite + React auth shell using the Better Auth client directly
+```text
+apps/
+  backend/    Express + Better Auth + Prisma
+  dashboard/  Vite + React dashboard
+
+packages/
+  ui/                 shared UI components
+  eslint-config/      shared lint config
+  typescript-config/  shared TS config
+```
 
 ## Local setup
 
@@ -51,14 +131,16 @@ pnpm --filter backend prisma:generate
 pnpm --filter backend seed:superadmin
 ```
 
-6. Start the backend and dashboard.
+6. Start the apps.
 
 ```sh
 pnpm dev
 ```
 
-The backend defaults to `http://localhost:3005` and the dashboard defaults to
-`http://localhost:5173`.
+Defaults:
+
+- backend: `http://localhost:3005`
+- dashboard: `http://localhost:5173`
 
 ## Mail setup
 
@@ -82,9 +164,11 @@ other `SUPERADMIN` rows back to `USER`.
 ## Useful commands
 
 ```sh
+pnpm dev
+pnpm build
+pnpm lint
+pnpm check-types
+pnpm --filter backend test
 pnpm --filter backend dev
 pnpm --filter dashboard dev
-pnpm --filter backend check-types
-pnpm --filter backend build
-pnpm --filter dashboard build
 ```
