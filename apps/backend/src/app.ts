@@ -15,6 +15,7 @@ import { logger } from './lib/logger.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { dummyPrivateRouter } from './routes/dummyPrivateRoutes.js'
 import { publicHealthRouter } from './routes/publicHealthRoutes.js'
+import { userRouter } from './routes/userRoutes.js'
 
 const JSON_BODY_LIMIT = '100kb'
 const URLENCODED_BODY_LIMIT = '50kb'
@@ -67,6 +68,7 @@ app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT, para
 
 app.use('/api', publicHealthRouter)
 app.use('/api', dummyPrivateRouter)
+app.use('/api', userRouter)
 
 app.use((req, res) => {
   res.status(404).json(buildApiErrorResponse(req, ERROR_CODES.NOT_FOUND, 'Route not found'))
