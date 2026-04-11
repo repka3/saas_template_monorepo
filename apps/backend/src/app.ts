@@ -7,6 +7,8 @@ import { pinoHttp } from 'pino-http'
 import { toNodeHandler } from 'better-auth/node'
 
 import { auth } from './lib/auth.js'
+import { ERROR_CODES } from '@repo/contracts'
+
 import { buildApiErrorResponse } from './lib/api-error-response.js'
 import { env } from './lib/env.js'
 import { logger } from './lib/logger.js'
@@ -39,10 +41,6 @@ app.use(
         id: req.id,
         method: req.method,
         url: req.url,
-        query: req.query,
-        params: req.params,
-        remoteAddress: req.remoteAddress,
-        remotePort: req.remotePort,
       }),
       res: (res) => ({
         statusCode: res.statusCode,
@@ -71,7 +69,7 @@ app.use('/api', publicHealthRouter)
 app.use('/api', dummyPrivateRouter)
 
 app.use((req, res) => {
-  res.status(404).json(buildApiErrorResponse(req, 'not_found', 'Route not found'))
+  res.status(404).json(buildApiErrorResponse(req, ERROR_CODES.NOT_FOUND, 'Route not found'))
 })
 
 app.use(errorHandler)

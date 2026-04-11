@@ -1,7 +1,9 @@
 import type { Request } from 'express'
 import type { ApiErrorResponse } from '@repo/contracts'
 
-export const buildApiErrorResponse = (req: Request, code: string, message: string, details?: unknown): ApiErrorResponse => {
+import type { HttpErrorCode } from './http-error.js'
+
+export const buildApiErrorResponse = (req: Request, code: HttpErrorCode, message: string, details?: Record<string, unknown>): ApiErrorResponse => {
   const response: ApiErrorResponse = {
     error: {
       code,

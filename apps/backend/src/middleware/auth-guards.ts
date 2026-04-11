@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
+import { ERROR_CODES } from '@repo/contracts'
 import { fromNodeHeaders } from 'better-auth/node'
 
 import type { SystemRole } from '../lib/auth-schema.js'
@@ -22,11 +23,11 @@ export const requireAuthenticatedUser: AuthenticatedRequestHandler = async (req,
     })
 
     if (!authContext) {
-      throw new HttpError(401, 'unauthorized', 'Authentication required')
+      throw new HttpError(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required')
     }
 
     if (authContext.user.isActive !== true) {
-      throw new HttpError(403, 'forbidden', 'Account is inactive')
+      throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Account is inactive')
     }
 
     res.locals.auth = authContext
@@ -42,14 +43,14 @@ export const requireSystemRole =
     const authContext = getResolvedAuthContext(res)
 
     if (!authContext) {
-      next(new HttpError(401, 'unauthorized', 'Authentication required'))
+      next(new HttpError(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required'))
       return
     }
 
     if (authContext.user.systemRole !== requiredRole) {
       const message = requiredRole === 'SUPERADMIN' ? 'Superadmin role required' : 'Required role missing'
 
-      next(new HttpError(403, 'forbidden', message))
+      next(new HttpError(403, ERROR_CODES.FORBIDDEN, message))
       return
     }
 
