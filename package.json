@@ -5,17 +5,18 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "format": "prettier --no-error-on-unmatched-pattern --write \"apps/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
-    "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
+    "format": "prettier --no-error-on-unmatched-pattern --write \"apps/*/src/**/*.{astro,js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
+    "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/*/src/**/*.{astro,js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
     "prettier": "^3.7.4",
+    "prettier-plugin-astro": "^0.14.1",
     "turbo": "^2.9.5",
     "typescript": "5.9.2"
   },
   "packageManager": "pnpm@10.15.1+sha512.34e538c329b5553014ca8e8f4535997f96180a1d0f614339357449935350d924e22f8614682191264ec33d1462ac21561aff97f6bb18065351c162c7e8f6de67",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   }
 }

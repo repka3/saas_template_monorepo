@@ -1,0 +1,677 @@
+---
+const dashboardBaseUrl = (import.meta.env.PUBLIC_DASHBOARD_URL || 'http://localhost:5173').replace(/\/$/, '')
+const loginUrl = new URL('/login', `${dashboardBaseUrl}/`).toString()
+const registerUrl = new URL('/register', `${dashboardBaseUrl}/`).toString()
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta
+      name="description"
+      content="Landing page for the SaaS template monorepo: Astro marketing site, Vite dashboard, Better Auth, role-aware routing, and Prisma-backed backend."
+    />
+    <title>SaaS Template | Astro Landing</title>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="ambient ambient-left"></div>
+      <div class="ambient ambient-right"></div>
+
+      <header class="site-header">
+        <a class="brand" href="/">
+          <span class="brand-mark">ST</span>
+          <span class="brand-copy">
+            <strong>SaaS Template</strong>
+            <span>Astro landing + product dashboard</span>
+          </span>
+        </a>
+
+        <nav class="site-nav" aria-label="Primary">
+          <a href="#stack">Stack</a>
+          <a href="#why">Why it works</a>
+          <a href={loginUrl}>Log in</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy reveal">
+            <p class="eyebrow">Launch the product shell first</p>
+            <h1>Marketing outside. Product inside. One repo.</h1>
+            <p class="lede">
+              This template now splits the public story from the authenticated app: Astro handles the landing site, while the dashboard stays focused on login,
+              registration, role-aware routing, and the product workspace.
+            </p>
+
+            <div class="hero-actions">
+              <a class="button button-primary" href={registerUrl}>Create account</a>
+              <a class="button button-secondary" href={loginUrl}>Open dashboard</a>
+            </div>
+
+            <dl class="hero-stats">
+              <div>
+                <dt>Frontend split</dt>
+                <dd>Astro for marketing, Vite React for the app shell</dd>
+              </div>
+              <div>
+                <dt>Auth baseline</dt>
+                <dd>Better Auth with verification, reset, and role redirects</dd>
+              </div>
+              <div>
+                <dt>Backend core</dt>
+                <dd>Express 5 + Prisma + PostgreSQL in the same workspace</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="hero-panel reveal reveal-delay">
+            <div class="panel-card panel-terminal">
+              <div class="panel-header">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <pre><code>apps/
+  landing/    Astro marketing site
+  dashboard/  Vite + React product app
+  backend/    Express + Better Auth + Prisma
+
+pnpm dev
+
+landing   → localhost:4321
+dashboard → localhost:5173
+backend   → localhost:3005</code></pre>
+            </div>
+
+            <div class="panel-card panel-grid">
+              <article>
+                <span>01</span>
+                <h2>Fast public pages</h2>
+                <p>Astro keeps the landing site server-first and content-driven instead of turning the product app into a second website.</p>
+              </article>
+              <article>
+                <span>02</span>
+                <h2>Focused app surface</h2>
+                <p>The dashboard root now behaves like an auth entry, not a temporary homepage competing with the product routes.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="stack-strip reveal" id="stack" aria-label="Technology stack">
+          <span>Astro</span>
+          <span>Vite</span>
+          <span>React 19</span>
+          <span>Better Auth</span>
+          <span>Prisma</span>
+          <span>PostgreSQL</span>
+          <span>Turborepo</span>
+          <span>pnpm</span>
+        </section>
+
+        <section class="feature-grid" id="why">
+          <article class="feature-card reveal">
+            <p class="feature-kicker">Public narrative</p>
+            <h2>Say what the product is without dragging auth UI into the homepage.</h2>
+            <p>
+              The landing site is now a standalone app under <code>apps/landing</code>, ready for SEO, docs links, pricing sections, and marketing copy without
+              polluting the dashboard router.
+            </p>
+          </article>
+
+          <article class="feature-card reveal reveal-delay">
+            <p class="feature-kicker">Product ergonomics</p>
+            <h2>Keep the authenticated area boring in the right way.</h2>
+            <p>
+              The React app remains the product shell: login, register, forgot password, reset password, email verification, and role-aware redirects are still
+              the center of gravity there.
+            </p>
+          </article>
+
+          <article class="feature-card reveal reveal-delay-2">
+            <p class="feature-kicker">Monorepo baseline</p>
+            <h2>One workspace, three apps, shared workflow.</h2>
+            <p>
+              Astro joins the existing Turborepo and pnpm workspace without special-casing. The root task graph can now run the landing app alongside the
+              dashboard and backend.
+            </p>
+          </article>
+        </section>
+
+        <section class="flow reveal">
+          <div class="section-heading">
+            <p class="eyebrow">What ships in the template</p>
+            <h2>Three surfaces, each doing one job well.</h2>
+          </div>
+
+          <div class="flow-grid">
+            <article>
+              <span class="step">Landing</span>
+              <h3>Attract</h3>
+              <p>Use Astro for the homepage, product framing, SEO pages, and future pricing or feature detail pages.</p>
+            </article>
+            <article>
+              <span class="step">Dashboard</span>
+              <h3>Convert</h3>
+              <p>Send people into the React app for sign-in, sign-up, and the authenticated experience tailored to their role.</p>
+            </article>
+            <article>
+              <span class="step">Backend</span>
+              <h3>Operate</h3>
+              <p>Keep sessions, persistence, email flows, and protected APIs on the Express and Prisma side.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="cta reveal">
+          <div>
+            <p class="eyebrow">Ready to adapt</p>
+            <h2>Use this as the public front door, then shape the product around your SaaS.</h2>
+          </div>
+
+          <div class="cta-actions">
+            <a class="button button-primary" href={registerUrl}>Start from the auth flow</a>
+            <a class="button button-secondary" href={loginUrl}>Visit the dashboard</a>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #f5efe4;
+    --surface: rgba(255, 250, 242, 0.8);
+    --surface-strong: rgba(255, 248, 237, 0.94);
+    --line: rgba(22, 35, 54, 0.12);
+    --ink: #1d2433;
+    --muted: #5f6676;
+    --accent: #bb5a2c;
+    --accent-strong: #8f3d17;
+    --accent-soft: #ffd9b6;
+    --deep: #21324b;
+    --shadow: 0 28px 70px rgba(42, 51, 70, 0.14);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at top left, rgba(254, 214, 167, 0.75), transparent 28%),
+      radial-gradient(circle at 80% 18%, rgba(60, 113, 171, 0.18), transparent 24%), linear-gradient(180deg, #f8f3e8 0%, #efe4d3 100%);
+    font-family: 'IBM Plex Sans', 'Avenir Next', 'Segoe UI Variable', sans-serif;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  code,
+  pre {
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', 'SF Mono', Consolas, monospace;
+  }
+
+  .page-shell {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+
+  .ambient {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(12px);
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  .ambient-left {
+    top: 6rem;
+    left: -5rem;
+    width: 18rem;
+    height: 18rem;
+    background: rgba(255, 196, 138, 0.42);
+  }
+
+  .ambient-right {
+    right: -4rem;
+    bottom: 8rem;
+    width: 20rem;
+    height: 20rem;
+    background: rgba(65, 112, 168, 0.15);
+  }
+
+  .site-header,
+  main {
+    position: relative;
+    z-index: 1;
+    width: min(1160px, 100%);
+    margin: 0 auto;
+  }
+
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0 1.5rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .brand-mark {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, var(--accent) 0%, #f09c5c 100%);
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .brand-copy {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .brand-copy strong {
+    font-size: 0.95rem;
+  }
+
+  .brand-copy span:last-child {
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+
+  .site-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 251, 245, 0.78);
+    backdrop-filter: blur(16px);
+  }
+
+  .site-nav a {
+    font-size: 0.92rem;
+    color: var(--muted);
+  }
+
+  .site-nav a:last-child {
+    color: var(--deep);
+    font-weight: 700;
+  }
+
+  .hero {
+    display: grid;
+    gap: 2rem;
+    padding: 2rem 0 1.5rem;
+  }
+
+  .hero-copy,
+  .hero-panel,
+  .stack-strip,
+  .feature-card,
+  .flow,
+  .cta {
+    animation: rise 720ms ease both;
+  }
+
+  .reveal-delay {
+    animation-delay: 120ms;
+  }
+
+  .reveal-delay-2 {
+    animation-delay: 200ms;
+  }
+
+  .eyebrow,
+  .feature-kicker,
+  .step {
+    margin: 0 0 0.8rem;
+    color: var(--accent-strong);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .hero h1,
+  .feature-card h2,
+  .section-heading h2,
+  .cta h2 {
+    margin: 0;
+    font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    line-height: 0.96;
+    letter-spacing: -0.04em;
+  }
+
+  .hero h1 {
+    max-width: 11ch;
+    font-size: clamp(3.6rem, 11vw, 7rem);
+  }
+
+  .lede {
+    max-width: 52rem;
+    margin: 1.5rem 0 0;
+    color: var(--muted);
+    font-size: 1.08rem;
+    line-height: 1.8;
+  }
+
+  .hero-actions,
+  .cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    margin-top: 1.8rem;
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.25rem;
+    padding: 0.8rem 1.25rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 700;
+    transition:
+      transform 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .button:hover {
+    transform: translateY(-1px);
+  }
+
+  .button-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, #dd7f42 100%);
+    color: white;
+    box-shadow: 0 18px 40px rgba(187, 90, 44, 0.22);
+  }
+
+  .button-secondary {
+    border-color: var(--line);
+    background: rgba(255, 251, 245, 0.72);
+    color: var(--deep);
+  }
+
+  .hero-stats {
+    display: grid;
+    gap: 1rem;
+    margin: 2rem 0 0;
+  }
+
+  .hero-stats div {
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .hero-stats dt {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .hero-stats dd {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .hero-panel {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .panel-card,
+  .feature-card,
+  .flow,
+  .cta,
+  .stack-strip {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--shadow);
+  }
+
+  .panel-terminal {
+    padding: 1rem;
+    border-radius: 1.75rem;
+    background: rgba(27, 34, 45, 0.94);
+    color: #eff3fb;
+  }
+
+  .panel-header {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .panel-header span {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.42);
+  }
+
+  .panel-terminal pre {
+    margin: 0;
+    overflow: auto;
+    font-size: 0.95rem;
+    line-height: 1.8;
+  }
+
+  .panel-grid {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 1.75rem;
+    background: var(--surface-strong);
+  }
+
+  .panel-grid article {
+    padding: 1.1rem;
+    border-radius: 1.35rem;
+    background: white;
+  }
+
+  .panel-grid span {
+    color: var(--accent-strong);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+  }
+
+  .panel-grid h2,
+  .flow h3 {
+    margin: 0.6rem 0 0.5rem;
+    font-size: 1.1rem;
+  }
+
+  .panel-grid p,
+  .feature-card p,
+  .flow p,
+  .cta p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+
+  .stack-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 1.5rem;
+  }
+
+  .stack-strip span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    border-radius: 999px;
+    background: white;
+    color: var(--deep);
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .feature-grid {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .feature-card {
+    padding: 1.5rem;
+    border-radius: 1.75rem;
+  }
+
+  .feature-card h2,
+  .section-heading h2,
+  .cta h2 {
+    font-size: clamp(2rem, 4vw, 3.4rem);
+  }
+
+  .feature-card p:last-child {
+    margin-top: 1rem;
+  }
+
+  .feature-card code {
+    padding: 0.18rem 0.42rem;
+    border-radius: 0.45rem;
+    background: rgba(33, 50, 75, 0.08);
+    font-size: 0.92em;
+  }
+
+  .flow,
+  .cta {
+    margin-top: 1rem;
+    padding: 1.6rem;
+    border-radius: 2rem;
+  }
+
+  .section-heading {
+    max-width: 44rem;
+  }
+
+  .flow-grid {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .flow-grid article {
+    padding: 1.25rem;
+    border-radius: 1.4rem;
+    background: white;
+  }
+
+  .cta {
+    display: grid;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, rgba(33, 50, 75, 0.95), rgba(46, 71, 101, 0.95)), var(--deep);
+    color: #f7f4ee;
+  }
+
+  .cta .eyebrow,
+  .cta p {
+    color: rgba(247, 244, 238, 0.72);
+  }
+
+  .cta .button-secondary {
+    color: #f7f4ee;
+    border-color: rgba(247, 244, 238, 0.18);
+    background: rgba(247, 244, 238, 0.08);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (min-width: 720px) {
+    .page-shell {
+      padding: 2rem;
+    }
+
+    .stack-strip {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .flow-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 960px) {
+    .hero {
+      grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+      align-items: start;
+      padding-top: 3rem;
+    }
+
+    .feature-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .cta {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+
+  @media (max-width: 719px) {
+    .site-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .site-nav {
+      width: 100%;
+      justify-content: space-between;
+      overflow-x: auto;
+    }
+
+    .hero h1 {
+      max-width: 9ch;
+    }
+  }
+</style>

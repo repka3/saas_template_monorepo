@@ -9,6 +9,7 @@
     "LOG_LEVEL",
     "NODE_ENV",
     "PORT",
+    "PUBLIC_DASHBOARD_URL",
     "SMTP_FROM",
     "SMTP_HOST",
     "SMTP_PASS",

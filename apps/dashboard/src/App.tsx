@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, BadgeCheck, KeyRound, LoaderCircle, MailCheck, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { ArrowRight, BadgeCheck, LoaderCircle, TriangleAlert } from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<RootRoute />} />
 
       <Route element={<GuestOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
@@ -57,74 +57,14 @@ function App() {
   )
 }
 
-function LandingPage() {
+function RootRoute() {
   const { homePath, isPending, user } = useAuth()
 
   if (isPending) {
     return <FullScreenState label="Loading session" />
   }
 
-  if (user) {
-    return <Navigate to={homePath} replace />
-  }
-
-  return (
-    <PageFrame>
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card className="border-0 bg-transparent shadow-none ring-0">
-          <CardHeader className="px-0">
-            <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-foreground/10 bg-background/70 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-muted-foreground uppercase backdrop-blur">
-              Reusable Auth Baseline
-            </div>
-            <CardTitle className="max-w-2xl text-4xl leading-tight sm:text-5xl">Generic authentication, seeded role routing, and email flows.</CardTitle>
-            <CardDescription className="max-w-xl text-base leading-7">
-              This dashboard is now a copyable auth shell: public sign-in and sign-up flows, reset and verification routes, and separate authenticated
-              destinations for users and seeded superadmins.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-0">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <HighlightCard
-                icon={<ShieldCheck className="size-5" />}
-                title="Role redirects"
-                description="Authenticated users land on the route that matches their system role."
-              />
-              <HighlightCard
-                icon={<MailCheck className="size-5" />}
-                title="Email workflows"
-                description="Verification and password reset are wired into Better Auth and SMTP."
-              />
-              <HighlightCard
-                icon={<KeyRound className="size-5" />}
-                title="Copyable baseline"
-                description="All labels, routes, and states stay generic for the next project."
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-foreground/10 bg-background/88 shadow-2xl shadow-slate-950/8 backdrop-blur">
-          <CardHeader>
-            <CardTitle>Start from the auth flow</CardTitle>
-            <CardDescription>Public routes stay lightweight. Protected routes are guarded by the Better Auth session and role checks.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <LinkButton className="w-full justify-between" to="/login">
-              Log in
-              <ArrowRight />
-            </LinkButton>
-            <LinkButton className="w-full justify-between" to="/register" variant="outline">
-              Create account
-              <ArrowRight />
-            </LinkButton>
-            <div className="rounded-2xl border border-dashed border-foreground/12 bg-muted/40 p-4 text-sm leading-6 text-muted-foreground">
-              Public registration always creates a standard user. The superadmin route is reserved for the env-seeded bootstrap account.
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </PageFrame>
-  )
+  return <Navigate to={user ? homePath : '/login'} replace />
 }
 
 function GuestOnlyRoute() {
@@ -592,16 +532,6 @@ function AuthRouteLayout({
         </Card>
       </div>
     </PageFrame>
-  )
-}
-
-function HighlightCard({ description, icon, title }: { description: string; icon: ReactNode; title: string }) {
-  return (
-    <div className="rounded-[1.5rem] border border-foreground/10 bg-background/70 p-4 backdrop-blur">
-      <div className="mb-3 inline-flex size-10 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-strong)]">{icon}</div>
-      <h2 className="text-base font-semibold">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-    </div>
   )
 }
 

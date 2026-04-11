@@ -38,10 +38,15 @@ The goal is to have a reusable starting point for building a SaaS product with:
 
 - `apps/dashboard`
   - Vite + React 19 app
-  - public auth routes: `/`, `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
+  - public auth routes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
   - protected areas for `USER` and `SUPERADMIN`
   - role-aware redirects after authentication
   - dashboard layout baseline and app-local `shadcn/ui` components
+
+- `apps/landing`
+  - Astro app for the public marketing / landing site
+  - links visitors into the dashboard auth flow
+  - isolated from the authenticated product UI
 
 ### Packages
 
@@ -57,14 +62,6 @@ The goal is to have a reusable starting point for building a SaaS product with:
 - pnpm workspaces
 - Prisma
 - Vitest on the backend
-
-## What is not here yet
-
-- A proper marketing / landing website built with Astro
-
-Right now `/` lives inside the React dashboard app as a temporary entry point.
-The plan is to add a separate Astro landing page later, and keep the dashboard
-focused on the authenticated product area.
 
 ## Scope and expectations
 
@@ -86,6 +83,7 @@ curated more like a personal product base than a neutral framework.
 ```text
 apps/
   backend/    Express + Better Auth + Prisma
+  landing/    Astro landing website
   dashboard/  Vite + React dashboard
 
 packages/
@@ -106,6 +104,7 @@ pnpm install
 ```sh
 cp apps/backend/.env.example apps/backend/.env
 cp apps/dashboard/.env.example apps/dashboard/.env
+cp apps/landing/.env.example apps/landing/.env
 ```
 
 3. Start PostgreSQL.
@@ -136,6 +135,7 @@ pnpm dev
 Defaults:
 
 - backend: `http://localhost:3005`
+- landing: `http://localhost:4321`
 - dashboard: `http://localhost:5173`
 
 ## Mail setup
@@ -166,5 +166,6 @@ pnpm lint
 pnpm check-types
 pnpm --filter backend test
 pnpm --filter backend dev
+pnpm --filter landing dev
 pnpm --filter dashboard dev
 ```
