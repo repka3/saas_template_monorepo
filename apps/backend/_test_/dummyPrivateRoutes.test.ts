@@ -8,6 +8,7 @@ Object.assign(process.env, {
   BETTER_AUTH_SECRET: 'test-secret-that-is-at-least-thirty-two-chars',
   BETTER_AUTH_URL: 'http://localhost:3005',
   CORS_ORIGIN: 'http://localhost:5173',
+  TRUST_PROXY: '2',
   SMTP_HOST: '127.0.0.1',
   SMTP_PORT: '1025',
   SMTP_USER: '',
@@ -83,6 +84,10 @@ beforeEach(() => {
 })
 
 describe('dummy private routes', () => {
+  it('configures trust proxy from the environment', () => {
+    expect(app.get('trust proxy')).toBe(2)
+  })
+
   it('rejects GET /api/dummy-private without a session', async () => {
     const response = await request(app).get('/api/dummy-private')
 
@@ -169,6 +174,22 @@ describe('dummy private routes', () => {
       error: {
         code: 'forbidden',
         message: 'Account is inactive',
+      },
+    })
+  })
+
+  it('rejects oversized JSON payloads before route handling', async () => {
+    const response = await request(app)
+      .post('/api/ping')
+      .send({
+        payload: 'x'.repeat(120_000),
+      })
+
+    expect(response.status).toBe(413)
+    expect(response.body).toEqual({
+      error: {
+        code: 'payload_too_large',
+        message: 'Request body exceeds the configured size limit',
       },
     })
   })

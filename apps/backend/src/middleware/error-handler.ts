@@ -42,6 +42,21 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     return
   }
 
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'type' in error &&
+    error.type === 'entity.too.large'
+  ) {
+    res.status(413).json({
+      error: {
+        code: 'payload_too_large',
+        message: 'Request body exceeds the configured size limit',
+      },
+    })
+    return
+  }
+
   res.status(500).json({
     error: {
       code: 'internal_server_error',

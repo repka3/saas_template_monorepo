@@ -11,10 +11,13 @@ import { errorHandler } from './middleware/error-handler.js'
 import { dummyPrivateRouter } from './routes/dummyPrivateRoutes.js'
 import { publicHealthRouter } from './routes/publicHealthRoutes.js'
 
+const JSON_BODY_LIMIT = '100kb'
+const URLENCODED_BODY_LIMIT = '50kb'
+
 export const app = express()
 
 app.disable('x-powered-by')
-app.set('trust proxy', 1)
+app.set('trust proxy', env.TRUST_PROXY)
 
 app.use(
   pinoHttp({
@@ -53,7 +56,8 @@ app.use(helmet())
 // Better Auth must be mounted before express.json() on Express.
 app.all('/api/auth/*splat', toNodeHandler(auth))
 
-app.use(express.json())
+app.use(express.json({ limit: JSON_BODY_LIMIT }))
+app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT, parameterLimit: 100 }))
 
 app.use('/api', publicHealthRouter)
 app.use('/api', dummyPrivateRouter)
