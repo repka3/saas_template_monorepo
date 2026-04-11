@@ -30,5 +30,3 @@ build/
 .vscode/*
 !.vscode/extensions.json
 
-PLAN.md
-PLAN_REVIEW.md
