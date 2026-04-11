@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 
 import { sanitizeForLog } from './sanitize.js'
+import { getOptionalAuthUserId } from '../../utils/auth-utils.js'
 
 const getOptionalSanitizedBody = (req: Request, res: Response): unknown => {
   if (!(res.locals as Record<string, unknown>).logBody) return undefined
@@ -29,8 +30,6 @@ export const buildErrorLogContext = (req: Request, res: Response, error: unknown
   params: req.params,
   query: req.query,
   body: getOptionalSanitizedBody(req, res),
-  userId: (res.locals as Record<string, unknown>).auth
-    ? ((res.locals as Record<string, unknown>).auth as { user?: { id?: string } })?.user?.id
-    : undefined,
+  userId: getOptionalAuthUserId(res),
   error: normalizeErrorMeta(error),
 })

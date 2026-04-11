@@ -3,18 +3,12 @@ import { ERROR_CODES } from '@repo/contracts'
 import { fromNodeHeaders } from 'better-auth/node'
 
 import type { SystemRole } from '../lib/auth-schema.js'
-import { auth, type AuthSession } from '../lib/auth.js'
+import { auth } from '../lib/auth.js'
 import { HttpError } from '../lib/http-error.js'
-
-type ResolvedAuthContext = NonNullable<AuthSession>
-type AuthLocals = {
-  auth?: ResolvedAuthContext
-}
+import { type AuthLocals, getAuthContext } from '../utils/auth-utils.js'
 
 type AuthenticatedResponse = Response<unknown, AuthLocals>
 type AuthenticatedRequestHandler = (req: Request, res: AuthenticatedResponse, next: NextFunction) => void | Promise<void>
-
-const getResolvedAuthContext = (res: AuthenticatedResponse) => res.locals.auth
 
 export const requireAuthenticatedUser: AuthenticatedRequestHandler = async (req, res, next) => {
   try {
@@ -40,12 +34,7 @@ export const requireAuthenticatedUser: AuthenticatedRequestHandler = async (req,
 export const requireSystemRole =
   (requiredRole: SystemRole): AuthenticatedRequestHandler =>
   (_req, res, next) => {
-    const authContext = getResolvedAuthContext(res)
-
-    if (!authContext) {
-      next(new HttpError(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required'))
-      return
-    }
+    const authContext = getAuthContext(res)
 
     if (authContext.user.systemRole !== requiredRole) {
       const message = requiredRole === 'SUPERADMIN' ? 'Superadmin role required' : 'Required role missing'
