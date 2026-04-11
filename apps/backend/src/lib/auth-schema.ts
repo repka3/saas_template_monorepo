@@ -1,6 +1,5 @@
-export const SYSTEM_ROLES = ['USER', 'SUPERADMIN'] as const
-
-export type SystemRole = (typeof SYSTEM_ROLES)[number]
+export { SYSTEM_ROLES, deriveDefaultNameFromEmail, getHomePathForRole } from '@repo/contracts'
+export type { SystemRole } from '@repo/contracts'
 
 export const authUserAdditionalFields = {
   systemRole: {
@@ -16,15 +15,3 @@ export const authUserAdditionalFields = {
     defaultValue: true,
   },
 } as const
-
-export const deriveDefaultNameFromEmail = (email: string) => {
-  const localPart = email.split('@')[0]?.trim()
-
-  if (!localPart) {
-    return 'user'
-  }
-
-  return localPart.replace(/[._-]+/g, ' ').trim() || 'user'
-}
-
-export const getHomePathForRole = (systemRole: SystemRole) => (systemRole === 'SUPERADMIN' ? '/superadmin' : '/dashboard')

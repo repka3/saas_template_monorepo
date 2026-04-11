@@ -1,9 +1,7 @@
 import { createAuthClient } from 'better-auth/react'
 import { inferAdditionalFields } from 'better-auth/client/plugins'
-
-export const SYSTEM_ROLES = ['USER', 'SUPERADMIN'] as const
-
-export type SystemRole = (typeof SYSTEM_ROLES)[number]
+import { SYSTEM_ROLES, deriveDefaultNameFromEmail, getHomePathForRole as getSharedHomePathForRole } from '@repo/contracts'
+import type { SystemRole } from '@repo/contracts'
 
 const additionalFields = {
   user: {
@@ -35,16 +33,10 @@ export const authClient = createAuthClient({
 export type AuthSession = typeof authClient.$Infer.Session
 export type AuthSessionUser = AuthSession['user']
 
-export const getHomePathForRole = (systemRole: string | null | undefined) => (systemRole === 'SUPERADMIN' ? '/superadmin' : '/dashboard')
+export { SYSTEM_ROLES, deriveDefaultNameFromEmail }
+export type { SystemRole }
 
-export const deriveDefaultNameFromEmail = (email: string) => {
-  const localPart = email.split('@')[0]?.trim()
-
-  if (!localPart) {
-    return 'user'
-  }
-
-  return localPart.replace(/[._-]+/g, ' ').trim() || 'user'
-}
+export const getHomePathForRole = (systemRole: string | null | undefined) =>
+  getSharedHomePathForRole(systemRole === 'SUPERADMIN' ? 'SUPERADMIN' : 'USER')
 
 export const toAbsoluteAppUrl = (pathname: string) => new URL(pathname, window.location.origin).toString()

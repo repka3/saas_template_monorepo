@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
@@ -5,6 +7,7 @@ import { pinoHttp } from 'pino-http'
 import { toNodeHandler } from 'better-auth/node'
 
 import { auth } from './lib/auth.js'
+import { buildApiErrorResponse } from './lib/api-error-response.js'
 import { env } from './lib/env.js'
 import { logger } from './lib/logger.js'
 import { errorHandler } from './middleware/error-handler.js'
@@ -22,6 +25,11 @@ app.set('trust proxy', env.TRUST_PROXY)
 app.use(
   pinoHttp({
     logger,
+    genReqId: (req) => {
+      const headerRequestId = req.headers['x-request-id']
+
+      return typeof headerRequestId === 'string' && headerRequestId.length > 0 ? headerRequestId : randomUUID()
+    },
     quietReqLogger: true,
     quietResLogger: true,
     customSuccessMessage: () => 'request completed',
@@ -62,13 +70,8 @@ app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT, para
 app.use('/api', publicHealthRouter)
 app.use('/api', dummyPrivateRouter)
 
-app.use((_req, res) => {
-  res.status(404).json({
-    error: {
-      code: 'not_found',
-      message: 'Route not found',
-    },
-  })
+app.use((req, res) => {
+  res.status(404).json(buildApiErrorResponse(req, 'not_found', 'Route not found'))
 })
 
 app.use(errorHandler)
