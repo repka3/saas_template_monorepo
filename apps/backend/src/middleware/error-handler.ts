@@ -6,6 +6,7 @@ import { buildApiErrorResponse } from '../lib/api-error-response.js'
 import { HttpError } from '../lib/http-error.js'
 import { buildErrorLogContext } from '../lib/logging/build-error-log-context.js'
 import { logger } from '../lib/logger.js'
+import { isMulterError } from './upload-avatar.js'
 
 export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   void _next
@@ -29,6 +30,21 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
 
   if (error instanceof SyntaxError && 'body' in error) {
     res.status(400).json(buildApiErrorResponse(req, ERROR_CODES.INVALID_JSON, 'Request body contains invalid JSON'))
+    return
+  }
+
+  if (isMulterError(error)) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json(buildApiErrorResponse(req, ERROR_CODES.PAYLOAD_TOO_LARGE, 'Avatar file exceeds the configured size limit'))
+      return
+    }
+
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+      res.status(400).json(buildApiErrorResponse(req, ERROR_CODES.VALIDATION_ERROR, 'Unexpected file upload field'))
+      return
+    }
+
+    res.status(400).json(buildApiErrorResponse(req, ERROR_CODES.VALIDATION_ERROR, 'Multipart upload failed'))
     return
   }
 

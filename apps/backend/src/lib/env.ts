@@ -36,6 +36,8 @@ const envSchema = z.object({
   SMTP_PASS: z.string(),
   SMTP_FROM: z.string().min(1),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']),
+  UPLOADS_DIR: z.string().default('.tmp/uploads'),
+  MAX_AVATAR_UPLOAD_BYTES: z.coerce.number().int().positive().default(2_097_152),
 })
 
 export const parseEnv = (input: NodeJS.ProcessEnv) => {

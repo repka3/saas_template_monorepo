@@ -13,6 +13,7 @@ import { buildApiErrorResponse } from './lib/api-error-response.js'
 import { env } from './lib/env.js'
 import { logger } from './lib/logger.js'
 import { errorHandler } from './middleware/error-handler.js'
+import { avatarDir } from './middleware/upload-avatar.js'
 import { dummyPrivateRouter } from './routes/dummyPrivateRoutes.js'
 import { publicHealthRouter } from './routes/publicHealthRoutes.js'
 import { userRouter } from './routes/userRoutes.js'
@@ -65,6 +66,7 @@ app.all('/api/auth/*splat', toNodeHandler(auth))
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }))
 app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT, parameterLimit: 100 }))
+app.use('/uploads/avatars', express.static(avatarDir))
 
 app.use('/api', publicHealthRouter)
 app.use('/api', dummyPrivateRouter)
