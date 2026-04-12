@@ -111,7 +111,6 @@ const buildDbUser = (overrides?: Record<string, unknown>) => ({
   profile: {
     firstName: 'Test',
     lastName: 'User',
-    avatarPath: null,
   },
   ...overrides,
 })
@@ -214,7 +213,6 @@ describe('GET /api/users/:id', () => {
       profile: {
         firstName: 'Test',
         lastName: 'User',
-        avatarPath: null,
       },
     })
   })
@@ -265,7 +263,6 @@ describe('PATCH /api/users/me/profile', () => {
       profile: {
         firstName: 'Ada',
         lastName: 'Lovelace',
-        avatarPath: null,
       },
     })
     getSessionMock.mockResolvedValue(buildSession())
@@ -298,7 +295,6 @@ describe('PATCH /api/users/me/profile', () => {
       profile: {
         firstName: null,
         lastName: null,
-        avatarPath: null,
       },
     })
     getSessionMock.mockResolvedValue(buildSession())
@@ -326,7 +322,6 @@ describe('PATCH /api/users/me/profile', () => {
       profile: {
         firstName: 'Test',
         lastName: 'User',
-        avatarPath: '/uploads/avatars/generated-avatar.png',
       },
     })
     getSessionMock.mockResolvedValue(buildSession())
@@ -352,19 +347,36 @@ describe('PATCH /api/users/me/profile', () => {
     })
     expect(response.body.user).toMatchObject({
       image: '/uploads/avatars/generated-avatar.png',
-      profile: {
-        avatarPath: '/uploads/avatars/generated-avatar.png',
-      },
     })
   })
 
-  it('keeps user.image in sync when avatar upload succeeds', async () => {
+  it('stores avatar uploads under a backend-generated filename instead of the client filename', async () => {
+    getSessionMock.mockResolvedValue(buildSession())
+
+    const response = await request(app)
+      .patch('/api/users/me/profile')
+      .attach('avatar', validAvatarFixture, { filename: '../../profile-shell.png', contentType: 'image/png' })
+
+    expect(response.status).toBe(200)
+    expect(updateMyProfileMock).toHaveBeenCalledTimes(1)
+
+    const [{ avatarFile }] = updateMyProfileMock.mock.calls[0].slice(1)
+    expect(avatarFile.originalname).toBe('profile-shell.png')
+    expect(avatarFile.filename).toMatch(/^[0-9a-f-]{36}\.png$/)
+    expect(avatarFile.filename).not.toContain('profile-shell')
+
+    const uploadedAvatars = await listUploadedAvatars()
+    expect(uploadedAvatars).toHaveLength(1)
+    expect(uploadedAvatars[0]).toMatch(/^[0-9a-f-]{36}\.png$/)
+    expect(uploadedAvatars[0]).not.toContain('profile-shell')
+  })
+
+  it('returns the persisted avatar on user.image when avatar upload succeeds', async () => {
     const dbUser = buildDbUser({
       image: '/uploads/avatars/synced-avatar.webp',
       profile: {
         firstName: 'Test',
         lastName: 'User',
-        avatarPath: '/uploads/avatars/synced-avatar.webp',
       },
     })
     getSessionMock.mockResolvedValue(buildSession())
@@ -376,16 +388,14 @@ describe('PATCH /api/users/me/profile', () => {
 
     expect(response.status).toBe(200)
     expect(response.body.user.image).toBe('/uploads/avatars/synced-avatar.webp')
-    expect(response.body.user.profile.avatarPath).toBe('/uploads/avatars/synced-avatar.webp')
   })
 
-  it('clears both profile.avatarPath and user.image when removeAvatar=true', async () => {
+  it('clears user.image when removeAvatar=true', async () => {
     const dbUser = buildDbUser({
       image: null,
       profile: {
         firstName: 'Test',
         lastName: 'User',
-        avatarPath: null,
       },
     })
     getSessionMock.mockResolvedValue(buildSession())
@@ -403,7 +413,6 @@ describe('PATCH /api/users/me/profile', () => {
       avatarFile: undefined,
     })
     expect(response.body.user.image).toBeNull()
-    expect(response.body.user.profile.avatarPath).toBeNull()
   })
 
   it('rejects requests that send both avatar and removeAvatar=true', async () => {

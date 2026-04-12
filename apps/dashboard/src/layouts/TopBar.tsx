@@ -1,23 +1,36 @@
-import { ChevronDown, LogOut } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { ChevronDown, LogOut, UserPen } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
+import { useProfileQuery } from '@/features/profile/use-profile-query'
+import { getProfileDisplayAvatarUrl, getProfileDisplayInitial, getProfileDisplayName } from '@/features/profile/profile-display'
 import { useAuth } from '@/hooks/use-auth'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
-const getInitial = (value: string | null | undefined) => value?.trim().charAt(0).toUpperCase() || 'U'
-
 export default function TopBar() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { homePath, user } = useAuth()
+  const { data } = useProfileQuery()
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [avatarFailed, setAvatarFailed] = useState(false)
+  const profile = data?.user.profile ?? null
+  const displayAvatar = user
+    ? getProfileDisplayAvatarUrl(user, profile)
+    : null
+
+  useEffect(() => {
+    setAvatarFailed(false)
+  }, [displayAvatar])
 
   if (!user) {
     return null
   }
+
+  const displayName = getProfileDisplayName(user, profile)
+  const displayInitial = getProfileDisplayInitial(user, profile)
 
   const handleSignOut = async () => {
     setIsSigningOut(true)
@@ -42,14 +55,22 @@ export default function TopBar() {
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button className="ml-auto min-w-0 gap-2 rounded-full px-2.5" variant="outline" />}>
           <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-            {getInitial(user.name || user.email)}
+            {displayAvatar && !avatarFailed ? (
+              <img alt={displayName} className="size-full rounded-full object-cover" src={displayAvatar} onError={() => setAvatarFailed(true)} />
+            ) : (
+              displayInitial
+            )}
           </span>
-          <span className="hidden max-w-32 truncate sm:block">{user.name || user.email}</span>
+          <span className="hidden max-w-32 truncate sm:block">{displayName}</span>
           <ChevronDown className="hidden text-muted-foreground sm:block" />
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" sideOffset={10}>
           <DropdownMenuGroup>
+            <DropdownMenuItem render={<Link to={`${homePath}/profile`} />}>
+              <UserPen />
+              <span>Profile</span>
+            </DropdownMenuItem>
             <DropdownMenuItem disabled={isSigningOut} onClick={handleSignOut}>
               <LogOut />
               <span>{isSigningOut ? 'Logging out' : 'Logout'}</span>

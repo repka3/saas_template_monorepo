@@ -1,4 +1,4 @@
-import { House } from 'lucide-react'
+import { House, UserPen } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import TopBar from '@/layouts/TopBar'
@@ -42,6 +42,12 @@ export default function RoleShell({ homePath, roleLabel }: RoleShellProps) {
                   <SidebarMenuButton isActive={pathname === homePath} render={<NavLink end to={homePath} />} tooltip="Home">
                     <House />
                     <span>Home</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={pathname === `${homePath}/profile`} render={<NavLink to={`${homePath}/profile`} />} tooltip="Profile">
+                    <UserPen />
+                    <span>Profile</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

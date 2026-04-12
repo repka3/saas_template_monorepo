@@ -12,6 +12,7 @@ import SuperAdminLayout from '@/layouts/SuperAdminLayout'
 import UserLayout from '@/layouts/UserLayout'
 import HomeSuperadmin from '@/pages/superadmin/HomeSuperadmin'
 import HomeUser from '@/pages/user/HomeUser'
+import ProfilePage from '@/pages/shared/ProfilePage'
 import { authClient, deriveDefaultNameFromEmail, getHomePathForRole, toAbsoluteAppUrl, type AuthSessionUser } from '@/lib/auth-client'
 import { useAuth } from '@/hooks/use-auth'
 
@@ -40,6 +41,7 @@ function App() {
         }
       >
         <Route index element={<HomeUser />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
       <Route
         path="/superadmin"
@@ -50,6 +52,7 @@ function App() {
         }
       >
         <Route index element={<HomeSuperadmin />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

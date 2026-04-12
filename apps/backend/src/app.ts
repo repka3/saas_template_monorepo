@@ -38,11 +38,16 @@ app.use(
     quietResLogger: true,
     customSuccessMessage: () => 'request completed',
     customErrorMessage: () => 'request failed',
+    customProps: (req, res) => ({
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+    }),
     serializers: {
       req: (req) => ({
         id: req.id,
         method: req.method,
-        url: req.url,
+        url: req.originalUrl,
       }),
       res: (res) => ({
         statusCode: res.statusCode,

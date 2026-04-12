@@ -24,7 +24,6 @@ export const userSelect = {
     select: {
       firstName: true,
       lastName: true,
-      avatarPath: true,
     },
   },
 } satisfies Prisma.UserSelect
@@ -74,14 +73,14 @@ const safeDeletePreviousAvatar = async (filePath: string): Promise<void> => {
 export const updateMyProfile = async (actorUserId: string, { input, avatarFile }: UpdateMyProfileParams) => {
   const currentUser = await prisma.user.findUnique({
     where: { id: actorUserId },
-    select: { image: true, profile: { select: { avatarPath: true } } },
+    select: { image: true },
   })
 
   if (!currentUser) {
     throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'User not found')
   }
 
-  const previousAvatarPath = currentUser.profile?.avatarPath ?? currentUser.image ?? null
+  const previousAvatarPath = currentUser.image ?? null
 
   let newAvatarPublicPath: string | null | undefined
   if (avatarFile) {
@@ -93,10 +92,6 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile }
   const profileData: Record<string, unknown> = {}
   if (input.firstName !== undefined) profileData.firstName = input.firstName
   if (input.lastName !== undefined) profileData.lastName = input.lastName
-  if (newAvatarPublicPath !== undefined) profileData.avatarPath = newAvatarPublicPath
-
-  const userData: Record<string, unknown> = {}
-  if (newAvatarPublicPath !== undefined) userData.image = newAvatarPublicPath
 
   let user: Prisma.UserGetPayload<{ select: typeof userSelect }>
   try {
@@ -110,7 +105,7 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile }
       if (newAvatarPublicPath !== undefined) {
         return tx.user.update({
           where: { id: actorUserId },
-          data: userData,
+          data: { image: newAvatarPublicPath },
           select: userSelect,
         })
       }
