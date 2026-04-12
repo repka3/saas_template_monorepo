@@ -5,6 +5,8 @@ import { requireAuthenticatedUser, requirePasswordChangeNotRequired, requireSyst
 
 export const dummyPrivateRouter = Router()
 
-dummyPrivateRouter.get('/dummy-private', requireAuthenticatedUser, requirePasswordChangeNotRequired, getDummyPrivate)
+const commonMiddleware = [requireAuthenticatedUser, requirePasswordChangeNotRequired] as const
 
-dummyPrivateRouter.get('/dummy-superadmin', requireAuthenticatedUser, requirePasswordChangeNotRequired, requireSystemRole('SUPERADMIN'), getDummySuperadmin)
+dummyPrivateRouter.get('/dummy-private', ...commonMiddleware, getDummyPrivate)
+
+dummyPrivateRouter.get('/dummy-superadmin', ...commonMiddleware, requireSystemRole('SUPERADMIN'), getDummySuperadmin)
