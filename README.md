@@ -147,6 +147,9 @@ The backend expects SMTP settings in `apps/backend/.env`.
 - `SMTP_USER`
 - `SMTP_PASS`
 - `SMTP_FROM`
+- `SUPERADMIN_EMAIL`
+- `SUPERADMIN_PASSWORD`
+- `SUPERADMIN_NAME` (optional)
 
 The example values target a local SMTP catcher such as Mailpit or MailHog on
 port `1025`.
@@ -154,8 +157,8 @@ port `1025`.
 ## Seed behavior
 
 `pnpm --filter backend seed:superadmin` ensures the env-driven superadmin
-exists, activates that account, synchronizes its password, and demotes any
-other `SUPERADMIN` rows back to `USER`.
+exists, promotes that account to `SUPERADMIN`, marks it verified, and clears
+any disabled or forced-password-change state on that bootstrap account.
 
 ## Useful commands
 

@@ -1,3 +1,4 @@
+import { APP_ROLES } from '@repo/contracts'
 import { z } from 'zod'
 
 const trimString = z.string().transform((value) => value.trim())
@@ -72,3 +73,9 @@ export type ListUsersQueryInput = z.infer<typeof listUsersQuerySchema>
 export type CreateUserBodyInput = z.infer<typeof createUserSchema>
 export type UpdateUserParamsInput = z.infer<typeof updateUserParamsSchema>
 export type UpdateUserBodyInput = z.infer<typeof updateUserSchema>
+
+export const updateUserRoleSchema = z.object({
+  role: z.enum(APP_ROLES),
+})
+
+export type UpdateUserRoleBodyInput = z.infer<typeof updateUserRoleSchema>

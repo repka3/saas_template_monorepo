@@ -5,7 +5,9 @@ import type {
   ListUsersQuery,
   ListUsersResponse,
   UpdateSuperadminUserResponse,
+  UpdateSuperadminUserRoleResponse,
   UpdateUserInput,
+  UpdateUserRoleInput,
 } from '@repo/contracts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -60,6 +62,21 @@ const updateSuperadminUser = async ({
     body: JSON.stringify(payload),
   })
 
+const updateSuperadminUserRole = async ({
+  userId,
+  payload,
+}: {
+  userId: string
+  payload: UpdateUserRoleInput
+}): Promise<UpdateSuperadminUserRoleResponse> =>
+  apiFetch<UpdateSuperadminUserRoleResponse>(`/api/superadmin/users/${userId}/role`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
 export function useSuperadminUsersQuery(params: ListUsersQuery) {
   return useQuery({
     queryKey: superadminUsersKeys.list(params),
@@ -98,6 +115,18 @@ export function useUpdateSuperadminUserMutation(userId: string) {
 
   return useMutation({
     mutationFn: (payload: UpdateUserInput) => updateSuperadminUser({ userId, payload }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: superadminUsersKeys.all })
+      queryClient.setQueryData(superadminUsersKeys.detail(userId), data)
+    },
+  })
+}
+
+export function useUpdateSuperadminUserRoleMutation(userId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdateUserRoleInput) => updateSuperadminUserRole({ userId, payload }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: superadminUsersKeys.all })
       queryClient.setQueryData(superadminUsersKeys.detail(userId), data)

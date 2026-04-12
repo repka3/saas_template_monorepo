@@ -19,7 +19,6 @@ Object.assign(process.env, {
 
 const prismaMock = {
   user: {
-    count: vi.fn(),
     update: vi.fn(),
   },
 }
@@ -28,42 +27,50 @@ vi.mock('../src/lib/prisma.js', () => ({
   prisma: prismaMock,
 }))
 
-const { blockPublicSignUpAfterBootstrap, clearMustChangePasswordAfterPasswordChange } = await import('../src/lib/auth.js')
+const { INTERNAL_BOOTSTRAP_SIGN_UP_HEADER, blockPublicSignUp, clearMustChangePasswordAfterPasswordChange } =
+  await import('../src/lib/auth.js')
 
 beforeEach(() => {
-  prismaMock.user.count.mockReset()
-  prismaMock.user.count.mockResolvedValue(0)
   prismaMock.user.update.mockReset()
   prismaMock.user.update.mockResolvedValue(undefined)
 })
 
-describe('blockPublicSignUpAfterBootstrap', () => {
+describe('blockPublicSignUp', () => {
   it('ignores non sign-up paths', async () => {
-    await blockPublicSignUpAfterBootstrap({
+    await blockPublicSignUp({
+      headers: new Headers(),
       path: '/change-password',
       context: {},
     })
-
-    expect(prismaMock.user.count).not.toHaveBeenCalled()
   })
 
-  it('throws once bootstrap has already created a user', async () => {
-    prismaMock.user.count.mockResolvedValue(1)
-
+  it('blocks public sign-up requests', async () => {
     await expect(
-      blockPublicSignUpAfterBootstrap({
+      blockPublicSignUp({
+        headers: new Headers(),
         path: '/sign-up/email',
         context: {},
       }),
     ).rejects.toBeInstanceOf(APIError)
+  })
 
-    expect(prismaMock.user.count).toHaveBeenCalledTimes(1)
+  it('allows the internal bootstrap seed to create the first superadmin', async () => {
+    await expect(
+      blockPublicSignUp({
+        headers: new Headers({
+          [INTERNAL_BOOTSTRAP_SIGN_UP_HEADER]: process.env.BETTER_AUTH_SECRET!,
+        }),
+        path: '/sign-up/email',
+        context: {},
+      }),
+    ).resolves.toBeUndefined()
   })
 })
 
 describe('clearMustChangePasswordAfterPasswordChange', () => {
   it('ignores unsuccessful auth responses', async () => {
     await clearMustChangePasswordAfterPasswordChange({
+      headers: new Headers(),
       path: '/change-password',
       context: {
         returned: APIError.from('BAD_REQUEST', {
@@ -92,6 +99,7 @@ describe('clearMustChangePasswordAfterPasswordChange', () => {
     }
 
     await clearMustChangePasswordAfterPasswordChange({
+      headers: new Headers(),
       path: '/change-password',
       context: {
         returned: response,

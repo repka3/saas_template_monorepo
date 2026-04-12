@@ -1,5 +1,5 @@
 import { createAuthClient } from 'better-auth/react'
-import { adminClient, inferAdditionalFields } from 'better-auth/client/plugins'
+import { inferAdditionalFields } from 'better-auth/client/plugins'
 import { APP_ROLES, deriveDefaultNameFromEmail, getHomePathForRole as getSharedHomePathForRole, hasAuthRole, parseAuthRoles } from '@repo/contracts'
 import type { AppRole } from '@repo/contracts'
 
@@ -7,6 +7,11 @@ const additionalFields = {
   user: {
     mustChangePassword: {
       type: 'boolean',
+      input: false,
+      required: true,
+    },
+    role: {
+      type: 'string',
       input: false,
       required: true,
     },
@@ -22,7 +27,7 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: 'include',
   },
-  plugins: [adminClient(), inferAdditionalFields(additionalFields)],
+  plugins: [inferAdditionalFields(additionalFields)],
 })
 
 export type AuthSession = typeof authClient.$Infer.Session

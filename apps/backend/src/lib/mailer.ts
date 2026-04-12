@@ -49,6 +49,19 @@ export const sendAuthEmail = async ({ html, subject, text, to }: AuthEmailOption
   logger.info({ messageId: info.messageId, to }, 'auth email sent')
 }
 
+export const dispatchAuthEmail = (promise: Promise<unknown>, metadata: { flow: 'password-reset' | 'verification'; to: string }) => {
+  void promise.catch((error) => {
+    logger.error(
+      {
+        err: error,
+        flow: metadata.flow,
+        to: metadata.to,
+      },
+      'auth email dispatch failed',
+    )
+  })
+}
+
 export const sendVerificationEmailMessage = async ({ to, verificationUrl }: { to: string; verificationUrl: string }) => {
   const html = renderEmailFrame({
     eyebrow: 'Email Verification',

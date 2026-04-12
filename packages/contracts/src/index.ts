@@ -10,5 +10,7 @@ export type {
   ListUsersResponse,
   SuperadminUser,
   UpdateSuperadminUserResponse,
+  UpdateSuperadminUserRoleResponse,
   UpdateUserInput,
+  UpdateUserRoleInput,
 } from './superadmin-users.js'

@@ -66,7 +66,9 @@ app.use(
 
 app.use(helmet())
 
-// Better Auth must be mounted before express.json() on Express.
+// Keep Better Auth mounted before the custom guarded routes so native auth flows
+// like `/api/auth/change-password` still work even when app routes reject
+// `mustChangePassword` users.
 app.all('/api/auth/*splat', toNodeHandler(auth))
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }))

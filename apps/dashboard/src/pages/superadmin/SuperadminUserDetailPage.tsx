@@ -22,12 +22,17 @@ import { buttonVariants } from '@/components/ui/button-variants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useSuperadminUserQuery, useUpdateSuperadminUserMutation } from '@/features/superadmin-users/superadmin-users-hooks'
+import {
+  useSuperadminUserQuery,
+  useUpdateSuperadminUserMutation,
+  useUpdateSuperadminUserRoleMutation,
+} from '@/features/superadmin-users/superadmin-users-hooks'
 import { copyText, EMAIL_PATTERN, formatDateTime, generateTemporaryPassword, trimToNull } from '@/features/superadmin-users/superadmin-users-utils'
-import { parseAuthRoles } from '@/lib/auth-client'
+import { APP_ROLES, type AppRole, parseAuthRoles } from '@/lib/auth-client'
 
-type PendingAction = 'identity' | 'disable' | 'enable' | 'password' | null
+type PendingAction = 'identity' | 'role' | 'disable' | 'enable' | 'password' | null
 
 const formatRoleLabel = (role: string) =>
   parseAuthRoles(role)
@@ -54,6 +59,7 @@ export default function SuperadminUserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const userQuery = useSuperadminUserQuery(id)
   const updateMutation = useUpdateSuperadminUserMutation(id ?? '')
+  const updateRoleMutation = useUpdateSuperadminUserRoleMutation(id ?? '')
   const [identityForm, setIdentityForm] = useState({
     email: '',
     name: '',
@@ -61,6 +67,7 @@ export default function SuperadminUserDetailPage() {
     lastName: '',
     emailVerified: false,
   })
+  const [roleForm, setRoleForm] = useState<AppRole>('user')
   const [disableReason, setDisableReason] = useState('')
   const [temporaryPassword, setTemporaryPassword] = useState(generateTemporaryPassword())
   const [showTemporaryPassword, setShowTemporaryPassword] = useState(false)
@@ -86,6 +93,7 @@ export default function SuperadminUserDetailPage() {
       lastName: user.profile.lastName ?? '',
       emailVerified: user.emailVerified,
     })
+    setRoleForm(parseAuthRoles(user.role)[0] ?? 'user')
     setDisableReason(user.banReason ?? '')
   }, [user])
 
@@ -238,6 +246,34 @@ export default function SuperadminUserDetailPage() {
     }
   }
 
+  const handleRoleSave = async () => {
+    setAccessError(null)
+
+    if (!user) {
+      return
+    }
+
+    const currentRole = parseAuthRoles(user.role)[0] ?? 'user'
+
+    if (roleForm === currentRole) {
+      toast.info('No role changes to save')
+      return
+    }
+
+    setPendingAction('role')
+
+    try {
+      await updateRoleMutation.mutateAsync({
+        role: roleForm,
+      })
+      toast.success('Role updated')
+    } catch (error) {
+      setAccessError(error instanceof Error ? error.message : 'Failed to update the role.')
+    } finally {
+      setPendingAction(null)
+    }
+  }
+
   if (userQuery.isPending) {
     return (
       <div className="flex w-full flex-col gap-4">
@@ -370,6 +406,31 @@ export default function SuperadminUserDetailPage() {
                   <Badge variant={user.banned ? 'destructive' : 'success'}>{user.banned ? 'Disabled' : 'Active'}</Badge>
                 </div>
               </div>
+
+              <Field>
+                <FieldLabel>Assigned role</FieldLabel>
+                <FieldContent>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Select value={roleForm} onValueChange={(value) => setRoleForm(value as AppRole)}>
+                      <SelectTrigger className="sm:w-56">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {APP_ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {formatRoleLabel(role)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button disabled={pendingAction !== null} type="button" variant="outline" onClick={handleRoleSave}>
+                      {pendingAction === 'role' ? <LoaderCircle className="animate-spin" /> : null}
+                      Save role
+                    </Button>
+                  </div>
+                  <FieldDescription>Role changes go through the backend admin API. The last active superadmin cannot be demoted.</FieldDescription>
+                </FieldContent>
+              </Field>
 
               <Field>
                 <FieldLabel>Disable reason</FieldLabel>

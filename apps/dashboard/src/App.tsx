@@ -21,6 +21,14 @@ import { useAuth } from '@/hooks/use-auth'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const isEmailVerificationError = (error: { message?: string; status?: number } | null | undefined) => {
+  if (!error) {
+    return false
+  }
+
+  return error.status === 403 && /verif/i.test(error.message ?? '')
+}
+
 function App() {
   return (
     <Routes>
@@ -137,10 +145,15 @@ function LoginPage() {
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
+  const [verificationNotice, setVerificationNotice] = useState<string | null>(null)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
+    setVerificationEmail(null)
+    setVerificationNotice(null)
 
     const formData = new FormData(event.currentTarget)
     const email = String(formData.get('email') || '')
@@ -170,10 +183,38 @@ function LoginPage() {
 
     if (result.error) {
       setError(result.error.message || 'Unable to sign in.')
+
+      if (isEmailVerificationError(result.error)) {
+        setVerificationEmail(email)
+        setVerificationNotice('Email verification is required before sign-in. A new verification email is sent automatically on each login attempt.')
+      }
+
       return
     }
 
     navigate(getEntryPathForUser(result.data.user), { replace: true })
+  }
+
+  const handleResendVerification = async () => {
+    if (!verificationEmail) {
+      return
+    }
+
+    setIsResendingVerification(true)
+
+    const result = await authClient.sendVerificationEmail({
+      email: verificationEmail,
+      callbackURL: toAbsoluteAppUrl('/'),
+    })
+
+    setIsResendingVerification(false)
+
+    if (result.error) {
+      setError(result.error.message || 'Unable to resend the verification email.')
+      return
+    }
+
+    setVerificationNotice(`Verification email sent to ${verificationEmail}.`)
   }
 
   return (
@@ -201,6 +242,19 @@ function LoginPage() {
           Forgot password
         </LinkButton>
       </div>
+      {verificationEmail ? (
+        <Alert>
+          <TriangleAlert />
+          <AlertTitle>Verification required</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>{verificationNotice}</p>
+            <Button className="w-full justify-between sm:w-auto" disabled={isResendingVerification} onClick={handleResendVerification} variant="outline">
+              {isResendingVerification ? 'Sending verification email' : 'Resend verification email'}
+              {isResendingVerification ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
     </AuthRouteLayout>
   )
 }

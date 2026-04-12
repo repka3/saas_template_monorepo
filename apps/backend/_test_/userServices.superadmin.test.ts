@@ -35,6 +35,7 @@ const authMock = {
   api: {
     createUser: vi.fn(),
     adminUpdateUser: vi.fn(),
+    setRole: vi.fn(),
     setUserPassword: vi.fn(),
     revokeUserSessions: vi.fn(),
     banUser: vi.fn(),
@@ -59,7 +60,8 @@ vi.mock('../src/lib/logger.js', () => ({
   },
 }))
 
-const { createSuperadminUser, listSuperadminUsers, updateSuperadminUser } = await import('../src/services/userServices.js')
+const { createSuperadminUser, listSuperadminUsers, updateSuperadminUser, updateSuperadminUserRole } =
+  await import('../src/services/userServices.js')
 
 const buildUserRecord = (overrides?: Record<string, unknown>) => ({
   id: 'user-2',
@@ -113,6 +115,8 @@ beforeEach(() => {
   authMock.api.createUser.mockResolvedValue({ user: { id: 'user-2' } })
   authMock.api.adminUpdateUser.mockReset()
   authMock.api.adminUpdateUser.mockResolvedValue(buildUserRecord())
+  authMock.api.setRole.mockReset()
+  authMock.api.setRole.mockResolvedValue({ success: true })
   authMock.api.setUserPassword.mockReset()
   authMock.api.setUserPassword.mockResolvedValue({ status: true })
   authMock.api.revokeUserSessions.mockReset()
@@ -331,5 +335,79 @@ describe('updateSuperadminUser', () => {
       }),
       'Superadmin user update partially succeeded before failing',
     )
+  })
+
+  it('prevents disabling the last active superadmin', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin', banned: false }))
+    prismaMock.user.count.mockResolvedValueOnce(1)
+
+    await expect(
+      updateSuperadminUser(
+        {
+          actorUserId: 'actor-1',
+          requestHeaders: new Headers(),
+        },
+        'user-2',
+        {
+          disabled: true,
+        },
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      code: 'forbidden',
+    })
+
+    expect(authMock.api.banUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateSuperadminUserRole', () => {
+  it('updates a user role through Better Auth', async () => {
+    prismaMock.user.findUnique
+      .mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'user' }))
+      .mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin' }))
+
+    const user = await updateSuperadminUserRole(
+      {
+        actorUserId: 'actor-1',
+        requestHeaders: new Headers(),
+      },
+      'user-2',
+      {
+        role: 'superadmin',
+      },
+    )
+
+    expect(authMock.api.setRole).toHaveBeenCalledWith({
+      body: {
+        userId: 'user-2',
+        role: 'superadmin',
+      },
+      headers: expect.any(Headers),
+    })
+    expect(user.role).toBe('superadmin')
+  })
+
+  it('prevents demoting the last active superadmin', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin', banned: false }))
+    prismaMock.user.count.mockResolvedValueOnce(1)
+
+    await expect(
+      updateSuperadminUserRole(
+        {
+          actorUserId: 'actor-1',
+          requestHeaders: new Headers(),
+        },
+        'user-2',
+        {
+          role: 'user',
+        },
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      code: 'forbidden',
+    })
+
+    expect(authMock.api.setRole).not.toHaveBeenCalled()
   })
 })

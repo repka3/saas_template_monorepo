@@ -6,6 +6,8 @@ import type {
   ListUsersQuery,
   UpdateSuperadminUserResponse,
   UpdateUserInput,
+  UpdateSuperadminUserRoleResponse,
+  UpdateUserRoleInput,
 } from '@repo/contracts'
 import { ERROR_CODES } from '@repo/contracts'
 import { fromNodeHeaders } from 'better-auth/node'
@@ -18,11 +20,17 @@ import {
   listSuperadminUsers,
   updateMyProfile,
   updateSuperadminUser,
+  updateSuperadminUserRole,
 } from '../services/userServices.js'
 import { assertCanReadUser } from '../utils/authorization/user-policy.js'
 import { getAuthUser, getAuthUserId } from '../utils/auth-utils.js'
 import type { UpdateProfileInput } from '../validation/user-profile.js'
-import type { CreateUserBodyInput, UpdateUserBodyInput, UpdateUserParamsInput } from '../validation/superadmin-users.js'
+import type {
+  CreateUserBodyInput,
+  UpdateUserBodyInput,
+  UpdateUserParamsInput,
+  UpdateUserRoleBodyInput,
+} from '../validation/superadmin-users.js'
 
 export const listUsersController: RequestHandler = async (req, res) => {
   const response = await listSuperadminUsers(req.query as ListUsersQuery)
@@ -89,6 +97,25 @@ export const updateUserController: RequestHandler<UpdateUserParamsInput, UpdateS
     },
     req.params.id,
     req.body as UpdateUserInput,
+  )
+
+  res.status(200).json({ user })
+}
+
+export const updateUserRoleController: RequestHandler<
+  UpdateUserParamsInput,
+  UpdateSuperadminUserRoleResponse,
+  UpdateUserRoleBodyInput
+> = async (req, res) => {
+  const actorUserId = getAuthUserId(res)
+  const user = await updateSuperadminUserRole(
+    {
+      actorUserId,
+      requestHeaders: fromNodeHeaders(req.headers),
+      requestId: req.id !== undefined ? String(req.id) : undefined,
+    },
+    req.params.id,
+    req.body as UpdateUserRoleInput,
   )
 
   res.status(200).json({ user })

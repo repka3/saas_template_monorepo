@@ -6,10 +6,11 @@ import { adminAc, userAc } from 'better-auth/plugins/admin/access'
 
 import { authUserAdditionalFields } from './auth-schema.js'
 import { env } from './env.js'
-import { sendPasswordResetEmailMessage, sendVerificationEmailMessage } from './mailer.js'
+import { dispatchAuthEmail, sendPasswordResetEmailMessage, sendVerificationEmailMessage } from './mailer.js'
 import { prisma } from './prisma.js'
 
 type AuthHookContext = {
+  headers?: Headers
   path: string
   context: {
     returned?: unknown
@@ -23,24 +24,21 @@ type AuthHookContext = {
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
-const bootstrapAdminUserIds = (env.BETTER_AUTH_BOOTSTRAP_ADMIN_USER_IDS ?? '')
-  .split(',')
-  .map((value) => value.trim())
-  .filter((value) => value.length > 0)
+export const INTERNAL_BOOTSTRAP_SIGN_UP_HEADER = 'x-bootstrap-superadmin-secret'
 
-export const blockPublicSignUpAfterBootstrap = async (context: AuthHookContext) => {
+export const blockPublicSignUp = async (context: AuthHookContext) => {
   if (context.path !== '/sign-up/email') {
     return
   }
 
-  const existingUsers = await prisma.user.count()
-
-  if (existingUsers > 0) {
-    throw APIError.from('FORBIDDEN', {
-      code: 'SIGN_UP_DISABLED',
-      message: 'Public sign-up is disabled.',
-    })
+  if (context.headers?.get(INTERNAL_BOOTSTRAP_SIGN_UP_HEADER) === env.BETTER_AUTH_SECRET) {
+    return
   }
+
+  throw APIError.from('FORBIDDEN', {
+    code: 'SIGN_UP_DISABLED',
+    message: 'Public sign-up is disabled.',
+  })
 }
 
 export const clearMustChangePasswordAfterPasswordChange = async (context: AuthHookContext) => {
@@ -85,7 +83,6 @@ export const auth = betterAuth({
   plugins: [
     adminPlugin({
       defaultRole: 'user',
-      adminUserIds: bootstrapAdminUserIds,
       bannedUserMessage: 'Your account is disabled.',
       roles: {
         user: userAc,
@@ -95,23 +92,34 @@ export const auth = betterAuth({
   ],
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendPasswordResetEmailMessage({
-        to: user.email,
-        resetUrl: url,
-      })
+      dispatchAuthEmail(
+        sendPasswordResetEmailMessage({
+          to: user.email,
+          resetUrl: url,
+        }),
+        {
+          flow: 'password-reset',
+          to: user.email,
+        },
+      )
     },
   },
   emailVerification: {
-    sendVerificationEmail: async ({ token, user }) => {
-      const verificationUrl = new URL('/verify-email', env.CORS_ORIGIN)
-      verificationUrl.searchParams.set('token', token)
-
-      await sendVerificationEmailMessage({
-        to: user.email,
-        verificationUrl: verificationUrl.toString(),
-      })
+    sendOnSignIn: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      dispatchAuthEmail(
+        sendVerificationEmailMessage({
+          to: user.email,
+          verificationUrl: url,
+        }),
+        {
+          flow: 'verification',
+          to: user.email,
+        },
+      )
     },
   },
   advanced: {
@@ -123,7 +131,7 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    before: createAuthMiddleware(blockPublicSignUpAfterBootstrap),
+    before: createAuthMiddleware(blockPublicSignUp),
     after: createAuthMiddleware(clearMustChangePasswordAfterPasswordChange),
   },
   database: prismaAdapter(prisma, {

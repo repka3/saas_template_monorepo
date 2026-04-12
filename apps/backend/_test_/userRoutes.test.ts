@@ -28,6 +28,7 @@ const getSuperadminUserByIdMock = vi.fn()
 const listSuperadminUsersMock = vi.fn()
 const createSuperadminUserMock = vi.fn()
 const updateSuperadminUserMock = vi.fn()
+const updateSuperadminUserRoleMock = vi.fn()
 const updateMyProfileMock = vi.fn()
 
 vi.mock('../src/lib/auth.js', () => ({
@@ -44,6 +45,7 @@ vi.mock('../src/services/userServices.js', () => ({
   listSuperadminUsers: listSuperadminUsersMock,
   createSuperadminUser: createSuperadminUserMock,
   updateSuperadminUser: updateSuperadminUserMock,
+  updateSuperadminUserRole: updateSuperadminUserRoleMock,
   updateMyProfile: updateMyProfileMock,
   userSelect: {},
 }))
@@ -184,6 +186,8 @@ beforeEach(async () => {
   createSuperadminUserMock.mockResolvedValue(buildSuperadminUser())
   updateSuperadminUserMock.mockReset()
   updateSuperadminUserMock.mockResolvedValue(buildSuperadminUser())
+  updateSuperadminUserRoleMock.mockReset()
+  updateSuperadminUserRoleMock.mockResolvedValue(buildSuperadminUser({ role: 'superadmin' }))
   updateMyProfileMock.mockReset()
   updateMyProfileMock.mockResolvedValue(buildDbUser())
   await fs.rm(uploadsRoot, { recursive: true, force: true })
@@ -484,6 +488,51 @@ describe('PATCH /api/superadmin/users/:id', () => {
 
     expect(response.status).toBe(500)
     expect(response.body.error.code).toBe('internal_server_error')
+  })
+})
+
+describe('PATCH /api/superadmin/users/:id/role', () => {
+  it('rejects authenticated non-superadmins with 403', async () => {
+    getSessionMock.mockResolvedValue(buildSession())
+
+    const response = await request(app).patch('/api/superadmin/users/user-2/role').send({
+      role: 'superadmin',
+    })
+
+    expect(response.status).toBe(403)
+    expect(updateSuperadminUserRoleMock).not.toHaveBeenCalled()
+  })
+
+  it('validates the requested role before calling the service', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
+
+    const response = await request(app).patch('/api/superadmin/users/user-2/role').send({
+      role: 'owner',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body.error.code).toBe('validation_error')
+    expect(updateSuperadminUserRoleMock).not.toHaveBeenCalled()
+  })
+
+  it('updates a user role for a superadmin', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
+
+    const response = await request(app).patch('/api/superadmin/users/user-2/role').send({
+      role: 'superadmin',
+    })
+
+    expect(response.status).toBe(200)
+    expect(updateSuperadminUserRoleMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 'user-1',
+      }),
+      'user-2',
+      {
+        role: 'superadmin',
+      },
+    )
+    expect(response.body.user.role).toBe('superadmin')
   })
 })
 

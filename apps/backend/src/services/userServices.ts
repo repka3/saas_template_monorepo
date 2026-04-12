@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { ERROR_CODES } from '@repo/contracts'
-import type { CreateUserInput, ListUsersResponse, SuperadminUser, UpdateUserInput } from '@repo/contracts'
+import type { CreateUserInput, ListUsersResponse, SuperadminUser, UpdateUserInput, UpdateUserRoleInput } from '@repo/contracts'
 import { APIError } from 'better-auth'
 
 import type { Prisma } from '../generated/prisma/client.js'
@@ -66,6 +66,26 @@ interface UpdateMyProfileParams {
 }
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
+
+const countActiveSuperadmins = () =>
+  prisma.user.count({
+    where: {
+      role: 'superadmin',
+      banned: false,
+    },
+  })
+
+const ensureAnotherActiveSuperadminRemains = async (user: SuperadminUserRecord) => {
+  if (user.role !== 'superadmin' || user.banned === true) {
+    return
+  }
+
+  const activeSuperadminCount = await countActiveSuperadmins()
+
+  if (activeSuperadminCount <= 1) {
+    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'At least one active superadmin must remain')
+  }
+}
 
 const mapSuperadminUser = (user: SuperadminUserRecord): SuperadminUser => ({
   id: user.id,
@@ -295,6 +315,8 @@ export const updateSuperadminUser = async (
     }
 
     if (input.disabled === true) {
+      await ensureAnotherActiveSuperadminRemains(existingUser)
+
       await auth.api.banUser({
         body: {
           userId,
@@ -360,6 +382,50 @@ export const updateSuperadminUser = async (
 
     throw error
   }
+}
+
+export const updateSuperadminUserRole = async (
+  context: SuperadminActionContext,
+  userId: string,
+  input: UpdateUserRoleInput,
+): Promise<SuperadminUser> => {
+  const existingUser = await getSuperadminUserByIdOrNull(userId)
+
+  if (!existingUser) {
+    throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'User not found')
+  }
+
+  if (context.actorUserId === userId) {
+    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'You cannot change your own role')
+  }
+
+  if (existingUser.role === input.role) {
+    return mapSuperadminUser(existingUser)
+  }
+
+  if (existingUser.role === 'superadmin' && input.role !== 'superadmin') {
+    await ensureAnotherActiveSuperadminRemains(existingUser)
+  }
+
+  try {
+    await auth.api.setRole({
+      body: {
+        userId,
+        role: input.role,
+      },
+      headers: context.requestHeaders,
+    })
+  } catch (error) {
+    throw mapBetterAuthError(error) ?? error
+  }
+
+  const user = await getSuperadminUserByIdOrNull(userId)
+
+  if (!user) {
+    throw new Error('Failed to reload user after role update')
+  }
+
+  return mapSuperadminUser(user)
 }
 
 const resolveAvatarDiskPath = (publicPath: string): string | null => {

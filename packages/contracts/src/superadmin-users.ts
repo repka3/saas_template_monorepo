@@ -1,3 +1,5 @@
+import type { AppRole } from './auth.js'
+
 export interface SuperadminUser {
   id: string
   email: string
@@ -45,6 +47,10 @@ export interface UpdateSuperadminUserResponse {
   user: SuperadminUser
 }
 
+export interface UpdateSuperadminUserRoleResponse {
+  user: SuperadminUser
+}
+
 export interface CreateUserInput {
   email: string
   name: string
@@ -63,4 +69,8 @@ export interface UpdateUserInput {
   disabled?: boolean
   disableReason?: string | null
   temporaryPassword?: string
+}
+
+export interface UpdateUserRoleInput {
+  role: AppRole
 }
