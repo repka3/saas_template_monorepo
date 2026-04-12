@@ -1,6 +1,8 @@
 export const APP_ROLES = ['user', 'superadmin'] as const
+export const AUTH_SIGNUP_MODES = ['public', 'admin_only'] as const
 
 export type AppRole = (typeof APP_ROLES)[number]
+export type AuthSignupMode = (typeof AUTH_SIGNUP_MODES)[number]
 
 const appRoleSet = new Set<string>(APP_ROLES)
 
@@ -28,3 +30,12 @@ export const deriveDefaultNameFromEmail = (email: string) => {
 }
 
 export const getHomePathForRole = (role: string | null | undefined) => (hasAuthRole(role, 'superadmin') ? '/superadmin' : '/dashboard')
+
+export interface PublicAuthConfig {
+  signupMode: AuthSignupMode
+  canSelfRegister: boolean
+}
+
+export interface GetPublicAuthConfigResponse {
+  auth: PublicAuthConfig
+}

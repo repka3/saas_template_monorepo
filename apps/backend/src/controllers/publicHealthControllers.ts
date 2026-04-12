@@ -1,6 +1,8 @@
 import type { RequestHandler } from 'express'
+import type { GetPublicAuthConfigResponse } from '@repo/contracts'
 
 import { DOMAIN_ERROR_CODES, HttpError } from '../lib/http-error.js'
+import { env } from '../lib/env.js'
 
 export const ping: RequestHandler = (_req, res) => {
   res.status(200).json({ status: 'ok' })
@@ -8,6 +10,15 @@ export const ping: RequestHandler = (_req, res) => {
 
 export const health: RequestHandler = (_req, res) => {
   res.status(200).json({ status: 'ok' })
+}
+
+export const getPublicAuthConfig: RequestHandler<never, GetPublicAuthConfigResponse> = (_req, res) => {
+  res.status(200).json({
+    auth: {
+      signupMode: env.AUTH_SIGNUP_MODE,
+      canSelfRegister: env.AUTH_SIGNUP_MODE === 'public',
+    },
+  })
 }
 
 export const testErrorController: RequestHandler = (_req, _res, next) => {

@@ -25,6 +25,7 @@ export const createUserSchema = z.object({
   lastName: trimNullableString.optional(),
   temporaryPassword: trimString.pipe(z.string().min(12)),
   alreadyVerified: z.boolean().optional(),
+  role: z.enum(APP_ROLES).optional(),
 })
 
 export const updateUserParamsSchema = z.object({

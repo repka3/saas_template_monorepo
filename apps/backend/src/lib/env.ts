@@ -1,6 +1,8 @@
 import 'dotenv/config'
 import { z } from 'zod'
 
+const AUTH_SIGNUP_MODE_VALUES = ['public', 'admin_only'] as const
+
 const trustProxySchema = z.string().transform((value, context) => {
   const normalizedValue = value.trim().toLowerCase()
 
@@ -38,6 +40,7 @@ const envSchema = z.object({
   SUPERADMIN_EMAIL: z.string().email().optional(),
   SUPERADMIN_PASSWORD: z.string().min(12).optional(),
   SUPERADMIN_NAME: z.string().trim().min(1).optional(),
+  AUTH_SIGNUP_MODE: z.enum(AUTH_SIGNUP_MODE_VALUES).default('public'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']),
   UPLOADS_DIR: z.string().default('.tmp/uploads'),
   MAX_AVATAR_UPLOAD_BYTES: z.coerce.number().int().positive().default(2_097_152),

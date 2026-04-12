@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+const AUTH_SIGNUP_MODE_VALUES = ['public', 'admin_only'] as const
+
 const validEnv = {
   NODE_ENV: 'test',
   PORT: '3005',
@@ -13,6 +15,7 @@ const validEnv = {
   SMTP_USER: '',
   SMTP_PASS: '',
   SMTP_FROM: 'SaaS Template <no-reply@example.test>',
+  AUTH_SIGNUP_MODE: 'public',
   LOG_LEVEL: 'silent',
 }
 
@@ -43,5 +46,25 @@ describe('parseEnv', () => {
     })
 
     expect(parsedEnv.TRUST_PROXY).toBe(false)
+  })
+
+  it('defaults signup mode to public when unset', () => {
+    const parsedEnv = parseEnv({
+      ...validEnv,
+      AUTH_SIGNUP_MODE: undefined,
+    })
+
+    expect(parsedEnv.AUTH_SIGNUP_MODE).toBe('public')
+  })
+
+  it('accepts supported signup modes', () => {
+    for (const mode of AUTH_SIGNUP_MODE_VALUES) {
+      const parsedEnv = parseEnv({
+        ...validEnv,
+        AUTH_SIGNUP_MODE: mode,
+      })
+
+      expect(parsedEnv.AUTH_SIGNUP_MODE).toBe(mode)
+    }
   })
 })

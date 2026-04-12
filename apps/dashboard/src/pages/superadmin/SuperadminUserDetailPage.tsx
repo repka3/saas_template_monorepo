@@ -30,7 +30,7 @@ import {
   useUpdateSuperadminUserRoleMutation,
 } from '@/features/superadmin-users/superadmin-users-hooks'
 import { copyText, EMAIL_PATTERN, formatDateTime, generateTemporaryPassword, trimToNull } from '@/features/superadmin-users/superadmin-users-utils'
-import { APP_ROLES, type AppRole, parseAuthRoles } from '@/lib/auth-client'
+import { type AppRole, parseAuthRoles } from '@/lib/auth-client'
 
 type PendingAction = 'identity' | 'role' | 'disable' | 'enable' | 'password' | null
 
@@ -80,6 +80,9 @@ export default function SuperadminUserDetailPage() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
 
   const user = userQuery.data?.user
+  const currentRole = parseAuthRoles(user?.role)[0] ?? 'user'
+  const canEditRole = currentRole === 'superadmin'
+  const availableRoleOptions = canEditRole ? (['superadmin', 'user'] as const) : (['user'] as const)
 
   useEffect(() => {
     if (!user) {
@@ -253,8 +256,6 @@ export default function SuperadminUserDetailPage() {
       return
     }
 
-    const currentRole = parseAuthRoles(user.role)[0] ?? 'user'
-
     if (roleForm === currentRole) {
       toast.info('No role changes to save')
       return
@@ -411,24 +412,28 @@ export default function SuperadminUserDetailPage() {
                 <FieldLabel>Assigned role</FieldLabel>
                 <FieldContent>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <Select value={roleForm} onValueChange={(value) => setRoleForm(value as AppRole)}>
+                    <Select disabled={!canEditRole} value={roleForm} onValueChange={(value) => setRoleForm(value as AppRole)}>
                       <SelectTrigger className="sm:w-56">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {APP_ROLES.map((role) => (
+                        {availableRoleOptions.map((role) => (
                           <SelectItem key={role} value={role}>
                             {formatRoleLabel(role)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button disabled={pendingAction !== null} type="button" variant="outline" onClick={handleRoleSave}>
+                    <Button disabled={pendingAction !== null || !canEditRole} type="button" variant="outline" onClick={handleRoleSave}>
                       {pendingAction === 'role' ? <LoaderCircle className="animate-spin" /> : null}
                       Save role
                     </Button>
                   </div>
-                  <FieldDescription>Role changes go through the backend admin API. The last active superadmin cannot be demoted.</FieldDescription>
+                  <FieldDescription>
+                    {canEditRole
+                      ? 'Existing superadmins can be demoted here. The last active superadmin cannot be demoted.'
+                      : 'Standard users cannot be promoted here. New superadmin accounts must be created directly by a superadmin.'}
+                  </FieldDescription>
                 </FieldContent>
               </Field>
 

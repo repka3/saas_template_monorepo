@@ -194,12 +194,14 @@ export const createSuperadminUser = async (
   input: CreateUserInput,
 ): Promise<SuperadminUser> => {
   try {
+    const role = input.role ?? 'user'
+
     const createdUser = await auth.api.createUser({
       body: {
         email: normalizeEmail(input.email),
         password: input.temporaryPassword,
         name: input.name.trim(),
-        role: 'user',
+        role,
         data: {
           mustChangePassword: true,
         },
@@ -397,6 +399,10 @@ export const updateSuperadminUserRole = async (
 
   if (context.actorUserId === userId) {
     throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'You cannot change your own role')
+  }
+
+  if (existingUser.role !== 'superadmin' && input.role === 'superadmin') {
+    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Superadmin role can only be assigned when a superadmin creates the account')
   }
 
   if (existingUser.role === input.role) {

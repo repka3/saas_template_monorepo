@@ -31,6 +31,10 @@ export const blockPublicSignUp = async (context: AuthHookContext) => {
     return
   }
 
+  if (env.AUTH_SIGNUP_MODE === 'public') {
+    return
+  }
+
   if (context.headers?.get(INTERNAL_BOOTSTRAP_SIGN_UP_HEADER) === env.BETTER_AUTH_SECRET) {
     return
   }
@@ -108,6 +112,7 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
+    sendOnSignUp: true,
     sendOnSignIn: true,
     sendVerificationEmail: async ({ user, url }) => {
       dispatchAuthEmail(

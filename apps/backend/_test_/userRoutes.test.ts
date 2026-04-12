@@ -17,6 +17,7 @@ Object.assign(process.env, {
   SMTP_USER: '',
   SMTP_PASS: '',
   SMTP_FROM: 'SaaS Template <no-reply@example.test>',
+  AUTH_SIGNUP_MODE: 'public',
   LOG_LEVEL: 'silent',
   UPLOADS_DIR: '.tmp/test-uploads-user-routes',
   MAX_AVATAR_UPLOAD_BYTES: '2097152',
@@ -397,6 +398,7 @@ describe('POST /api/superadmin/users', () => {
   })
 
   it('creates a user for a superadmin', async () => {
+    createSuperadminUserMock.mockResolvedValueOnce(buildSuperadminUser({ role: 'superadmin' }))
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).post('/api/superadmin/users').send({
@@ -406,6 +408,7 @@ describe('POST /api/superadmin/users', () => {
       lastName: ' Example ',
       temporaryPassword: 'temporary-pass',
       alreadyVerified: true,
+      role: 'superadmin',
     })
 
     expect(response.status).toBe(201)
@@ -420,10 +423,12 @@ describe('POST /api/superadmin/users', () => {
         lastName: 'Example',
         temporaryPassword: 'temporary-pass',
         alreadyVerified: true,
+        role: 'superadmin',
       },
     )
     expect(response.body.user).toMatchObject({
       email: 'created@example.com',
+      role: 'superadmin',
       mustChangePassword: true,
     })
   })

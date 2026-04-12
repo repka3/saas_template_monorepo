@@ -58,6 +58,7 @@ export interface CreateUserInput {
   lastName?: string | null
   temporaryPassword: string
   alreadyVerified?: boolean
+  role?: AppRole
 }
 
 export interface UpdateUserInput {

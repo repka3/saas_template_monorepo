@@ -21,11 +21,20 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useCreateSuperadminUserMutation, useSuperadminUsersQuery } from '@/features/superadmin-users/superadmin-users-hooks'
 import { buildVisiblePages, copyText, EMAIL_PATTERN, formatDateTime, generateTemporaryPassword, trimToUndefined } from '@/features/superadmin-users/superadmin-users-utils'
-import { parseAuthRoles } from '@/lib/auth-client'
+import { APP_ROLES, parseAuthRoles } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 
 const DEFAULT_PAGE_SIZE = 20
 const PAGE_SIZE_OPTIONS = ['10', '20', '50']
+type CreateFormState = {
+  email: string
+  name: string
+  firstName: string
+  lastName: string
+  temporaryPassword: string
+  alreadyVerified: boolean
+  role: 'user' | 'superadmin'
+}
 
 const formatRoleLabel = (role: string) =>
   parseAuthRoles(role)
@@ -46,13 +55,14 @@ const UserStatusBadges = ({ user }: { user: SuperadminUser }) => (
   </div>
 )
 
-const createInitialFormState = () => ({
+const createInitialFormState = (): CreateFormState => ({
   email: '',
   name: '',
   firstName: '',
   lastName: '',
   temporaryPassword: generateTemporaryPassword(),
   alreadyVerified: false,
+  role: 'user',
 })
 
 export default function SuperadminUsersPage() {
@@ -232,6 +242,7 @@ export default function SuperadminUsersPage() {
       name: createForm.name.trim(),
       temporaryPassword: createForm.temporaryPassword.trim(),
       alreadyVerified: createForm.alreadyVerified,
+      role: createForm.role,
       firstName: trimToUndefined(createForm.firstName),
       lastName: trimToUndefined(createForm.lastName),
     }
@@ -266,7 +277,7 @@ export default function SuperadminUsersPage() {
         </div>
         <Button className="gap-2 self-start md:self-auto" onClick={() => setIsCreateOpen(true)}>
           <Plus />
-          Create user
+          Create account
         </Button>
       </div>
 
@@ -394,8 +405,8 @@ export default function SuperadminUsersPage() {
       <Dialog open={isCreateOpen} onOpenChange={handleCreateDialogChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create user</DialogTitle>
-            <DialogDescription>Create a user with a temporary password and force a password change on next sign-in.</DialogDescription>
+            <DialogTitle>Create account</DialogTitle>
+            <DialogDescription>Create a user or superadmin account with a temporary password and force a password change on next sign-in.</DialogDescription>
           </DialogHeader>
 
           <form className="grid gap-4" onSubmit={handleCreateSubmit}>
@@ -493,6 +504,25 @@ export default function SuperadminUsersPage() {
               </FieldContent>
             </Field>
 
+            <Field>
+              <FieldLabel>Role</FieldLabel>
+              <FieldContent>
+                <Select value={createForm.role} onValueChange={(value) => setCreateForm((current) => ({ ...current, role: value as 'user' | 'superadmin' }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {APP_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {formatRoleLabel(role)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>New superadmin accounts must be created directly here. Existing users cannot be promoted later.</FieldDescription>
+              </FieldContent>
+            </Field>
+
             {createError ? <p className="text-sm text-destructive">{createError}</p> : null}
 
             <DialogFooter>
@@ -501,7 +531,7 @@ export default function SuperadminUsersPage() {
               </Button>
               <Button disabled={createMutation.isPending} type="submit">
                 {createMutation.isPending ? <LoaderCircle className="animate-spin" /> : null}
-                Create user
+                Create account
               </Button>
             </DialogFooter>
           </form>

@@ -14,6 +14,7 @@ Object.assign(process.env, {
   SMTP_USER: '',
   SMTP_PASS: '',
   SMTP_FROM: 'SaaS Template <no-reply@example.test>',
+  AUTH_SIGNUP_MODE: 'public',
   LOG_LEVEL: 'silent',
   UPLOADS_DIR: '.tmp/test-uploads-user-services',
   MAX_AVATAR_UPLOAD_BYTES: '2097152',
@@ -211,6 +212,30 @@ describe('createSuperadminUser', () => {
     expect(user.mustChangePassword).toBe(true)
   })
 
+  it('can create a superadmin account directly when requested by a superadmin', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(buildUserRecord({ role: 'superadmin' }))
+
+    await createSuperadminUser(
+      {
+        actorUserId: 'actor-1',
+        requestHeaders: new Headers(),
+      },
+      {
+        email: 'superadmin@example.com',
+        name: 'Super Admin',
+        temporaryPassword: 'temporary-pass',
+        role: 'superadmin',
+      },
+    )
+
+    expect(authMock.api.createUser).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        role: 'superadmin',
+      }),
+      headers: expect.any(Headers),
+    })
+  })
+
   it('maps Better Auth duplicate-email failures to 409 conflict', async () => {
     authMock.api.createUser.mockRejectedValueOnce(
       APIError.from('BAD_REQUEST', {
@@ -362,10 +387,11 @@ describe('updateSuperadminUser', () => {
 })
 
 describe('updateSuperadminUserRole', () => {
-  it('updates a user role through Better Auth', async () => {
+  it('demotes a superadmin through Better Auth', async () => {
     prismaMock.user.findUnique
+      .mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin', banned: false }))
       .mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'user' }))
-      .mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin' }))
+    prismaMock.user.count.mockResolvedValueOnce(2)
 
     const user = await updateSuperadminUserRole(
       {
@@ -374,18 +400,40 @@ describe('updateSuperadminUserRole', () => {
       },
       'user-2',
       {
-        role: 'superadmin',
+        role: 'user',
       },
     )
 
     expect(authMock.api.setRole).toHaveBeenCalledWith({
       body: {
         userId: 'user-2',
-        role: 'superadmin',
+        role: 'user',
       },
       headers: expect.any(Headers),
     })
-    expect(user.role).toBe('superadmin')
+    expect(user.role).toBe('user')
+  })
+
+  it('rejects promoting an existing user to superadmin', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'user' }))
+
+    await expect(
+      updateSuperadminUserRole(
+        {
+          actorUserId: 'actor-1',
+          requestHeaders: new Headers(),
+        },
+        'user-2',
+        {
+          role: 'superadmin',
+        },
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      code: 'forbidden',
+    })
+
+    expect(authMock.api.setRole).not.toHaveBeenCalled()
   })
 
   it('prevents demoting the last active superadmin', async () => {

@@ -147,12 +147,20 @@ The backend expects SMTP settings in `apps/backend/.env`.
 - `SMTP_USER`
 - `SMTP_PASS`
 - `SMTP_FROM`
+- `AUTH_SIGNUP_MODE` (`public` by default, or `admin_only`)
 - `SUPERADMIN_EMAIL`
 - `SUPERADMIN_PASSWORD`
 - `SUPERADMIN_NAME` (optional)
 
 The example values target a local SMTP catcher such as Mailpit or MailHog on
 port `1025`.
+
+Public registration is controlled by `AUTH_SIGNUP_MODE`:
+
+- `public`
+  - visitors can create standard `USER` accounts
+- `admin_only`
+  - public signup is disabled and accounts must be created by a superadmin
 
 ## Seed behavior
 

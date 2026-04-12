@@ -14,6 +14,7 @@ Object.assign(process.env, {
   SMTP_USER: '',
   SMTP_PASS: '',
   SMTP_FROM: 'SaaS Template <no-reply@example.test>',
+  AUTH_SIGNUP_MODE: 'public',
   LOG_LEVEL: 'silent',
 })
 
@@ -27,8 +28,11 @@ vi.mock('../src/lib/prisma.js', () => ({
   prisma: prismaMock,
 }))
 
-const { INTERNAL_BOOTSTRAP_SIGN_UP_HEADER, blockPublicSignUp, clearMustChangePasswordAfterPasswordChange } =
-  await import('../src/lib/auth.js')
+const importAuthModule = async (envOverrides?: Partial<NodeJS.ProcessEnv>) => {
+  vi.resetModules()
+  Object.assign(process.env, envOverrides)
+  return import('../src/lib/auth.js')
+}
 
 beforeEach(() => {
   prismaMock.user.update.mockReset()
@@ -37,6 +41,8 @@ beforeEach(() => {
 
 describe('blockPublicSignUp', () => {
   it('ignores non sign-up paths', async () => {
+    const { blockPublicSignUp } = await importAuthModule()
+
     await blockPublicSignUp({
       headers: new Headers(),
       path: '/change-password',
@@ -44,17 +50,25 @@ describe('blockPublicSignUp', () => {
     })
   })
 
-  it('blocks public sign-up requests', async () => {
+  it('allows public sign-up when signup mode is public', async () => {
+    const { blockPublicSignUp } = await importAuthModule({
+      AUTH_SIGNUP_MODE: 'public',
+    })
+
     await expect(
       blockPublicSignUp({
         headers: new Headers(),
         path: '/sign-up/email',
         context: {},
       }),
-    ).rejects.toBeInstanceOf(APIError)
+    ).resolves.toBeUndefined()
   })
 
   it('allows the internal bootstrap seed to create the first superadmin', async () => {
+    const { INTERNAL_BOOTSTRAP_SIGN_UP_HEADER, blockPublicSignUp } = await importAuthModule({
+      AUTH_SIGNUP_MODE: 'admin_only',
+    })
+
     await expect(
       blockPublicSignUp({
         headers: new Headers({
@@ -65,10 +79,26 @@ describe('blockPublicSignUp', () => {
       }),
     ).resolves.toBeUndefined()
   })
+
+  it('blocks public sign-up when signup mode is admin_only', async () => {
+    const { blockPublicSignUp } = await importAuthModule({
+      AUTH_SIGNUP_MODE: 'admin_only',
+    })
+
+    await expect(
+      blockPublicSignUp({
+        headers: new Headers(),
+        path: '/sign-up/email',
+        context: {},
+      }),
+    ).rejects.toBeInstanceOf(APIError)
+  })
 })
 
 describe('clearMustChangePasswordAfterPasswordChange', () => {
   it('ignores unsuccessful auth responses', async () => {
+    const { clearMustChangePasswordAfterPasswordChange } = await importAuthModule()
+
     await clearMustChangePasswordAfterPasswordChange({
       headers: new Headers(),
       path: '/change-password',
@@ -89,6 +119,8 @@ describe('clearMustChangePasswordAfterPasswordChange', () => {
   })
 
   it('clears the flag and updates the returned auth user after successful native password change', async () => {
+    const { clearMustChangePasswordAfterPasswordChange } = await importAuthModule()
+
     const response = {
       token: null,
       user: {
