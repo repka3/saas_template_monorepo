@@ -24,6 +24,9 @@ Object.assign(process.env, {
 
 const getSessionMock = vi.fn()
 const getUserByIdMock = vi.fn()
+const listSuperadminUsersMock = vi.fn()
+const createSuperadminUserMock = vi.fn()
+const updateSuperadminUserMock = vi.fn()
 const updateMyProfileMock = vi.fn()
 
 vi.mock('../src/lib/auth.js', () => ({
@@ -36,6 +39,9 @@ vi.mock('../src/lib/auth.js', () => ({
 
 vi.mock('../src/services/userServices.js', () => ({
   getUserById: getUserByIdMock,
+  listSuperadminUsers: listSuperadminUsersMock,
+  createSuperadminUser: createSuperadminUserMock,
+  updateSuperadminUser: updateSuperadminUserMock,
   updateMyProfile: updateMyProfileMock,
   userSelect: {},
 }))
@@ -69,7 +75,9 @@ type MockSession = {
     name: string
     image: string | null
     systemRole: 'USER' | 'SUPERADMIN'
-    isActive: boolean
+    role: 'user' | 'superadmin'
+    banned: boolean
+    mustChangePassword: boolean
   }
 }
 
@@ -93,7 +101,9 @@ const buildSession = (overrides?: Partial<MockSession['user']>): MockSession => 
     name: 'Test User',
     image: null,
     systemRole: 'USER',
-    isActive: true,
+    role: 'user',
+    banned: false,
+    mustChangePassword: false,
     ...overrides,
   },
 })
@@ -104,12 +114,32 @@ const buildDbUser = (overrides?: Record<string, unknown>) => ({
   email: 'user@example.com',
   emailVerified: true,
   systemRole: 'USER',
-  isActive: true,
   image: null,
   createdAt: new Date('2026-04-10T12:00:00.000Z'),
   updatedAt: new Date('2026-04-10T12:00:00.000Z'),
   profile: {
     firstName: 'Test',
+    lastName: 'User',
+  },
+  ...overrides,
+})
+
+const buildSuperadminUser = (overrides?: Record<string, unknown>) => ({
+  id: 'user-2',
+  email: 'created@example.com',
+  name: 'Created User',
+  emailVerified: false,
+  systemRole: 'USER',
+  role: 'user',
+  banned: false,
+  banReason: null,
+  banExpires: null,
+  mustChangePassword: true,
+  image: null,
+  createdAt: '2026-04-10T12:00:00.000Z',
+  updatedAt: '2026-04-10T12:00:00.000Z',
+  profile: {
+    firstName: 'Created',
     lastName: 'User',
   },
   ...overrides,
@@ -144,6 +174,15 @@ beforeEach(async () => {
   getSessionMock.mockResolvedValue(null)
   getUserByIdMock.mockReset()
   getUserByIdMock.mockResolvedValue(null)
+  listSuperadminUsersMock.mockReset()
+  listSuperadminUsersMock.mockResolvedValue({
+    users: [],
+    pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 },
+  })
+  createSuperadminUserMock.mockReset()
+  createSuperadminUserMock.mockResolvedValue(buildSuperadminUser())
+  updateSuperadminUserMock.mockReset()
+  updateSuperadminUserMock.mockResolvedValue(buildSuperadminUser())
   updateMyProfileMock.mockReset()
   updateMyProfileMock.mockResolvedValue(buildDbUser())
   await fs.rm(uploadsRoot, { recursive: true, force: true })
@@ -245,6 +284,171 @@ describe('GET /api/users/:id', () => {
         requestId: expect.any(String),
       },
     })
+  })
+})
+
+describe('GET /api/users', () => {
+  it('rejects unauthenticated requests with 401', async () => {
+    const response = await request(app).get('/api/users')
+
+    expect(response.status).toBe(401)
+    expect(listSuperadminUsersMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects authenticated non-superadmins with 403', async () => {
+    getSessionMock.mockResolvedValue(buildSession())
+
+    const response = await request(app).get('/api/users')
+
+    expect(response.status).toBe(403)
+    expect(response.body.error.message).toBe('Superadmin role required')
+    expect(listSuperadminUsersMock).not.toHaveBeenCalled()
+  })
+
+  it('returns paginated users for superadmins and normalizes the query', async () => {
+    listSuperadminUsersMock.mockResolvedValue({
+      users: [buildSuperadminUser()],
+      pagination: { page: 2, pageSize: 5, totalItems: 1, totalPages: 1 },
+    })
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+
+    const response = await request(app).get('/api/users?page=2&pageSize=5&query=%20Ada%20')
+
+    expect(response.status).toBe(200)
+    expect(listSuperadminUsersMock).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 5,
+      query: 'Ada',
+    })
+    expect(response.body.pagination).toEqual({
+      page: 2,
+      pageSize: 5,
+      totalItems: 1,
+      totalPages: 1,
+    })
+  })
+})
+
+describe('POST /api/users', () => {
+  it('rejects authenticated non-superadmins with 403', async () => {
+    getSessionMock.mockResolvedValue(buildSession())
+
+    const response = await request(app).post('/api/users').send({
+      email: 'person@example.com',
+      name: 'Person Example',
+      temporaryPassword: 'temporary-pass',
+    })
+
+    expect(response.status).toBe(403)
+    expect(createSuperadminUserMock).not.toHaveBeenCalled()
+  })
+
+  it('validates the temporary password length', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+
+    const response = await request(app).post('/api/users').send({
+      email: 'person@example.com',
+      name: 'Person Example',
+      temporaryPassword: 'short-pass',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body.error.code).toBe('validation_error')
+    expect(createSuperadminUserMock).not.toHaveBeenCalled()
+  })
+
+  it('creates a user for a superadmin', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+
+    const response = await request(app).post('/api/users').send({
+      email: 'person@example.com',
+      name: ' Person Example ',
+      firstName: ' Person ',
+      lastName: ' Example ',
+      temporaryPassword: 'temporary-pass',
+      alreadyVerified: true,
+    })
+
+    expect(response.status).toBe(201)
+    expect(createSuperadminUserMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 'user-1',
+      }),
+      {
+        email: 'person@example.com',
+        name: 'Person Example',
+        firstName: 'Person',
+        lastName: 'Example',
+        temporaryPassword: 'temporary-pass',
+        alreadyVerified: true,
+      },
+    )
+    expect(response.body.user).toMatchObject({
+      email: 'created@example.com',
+      mustChangePassword: true,
+    })
+  })
+})
+
+describe('PATCH /api/users/:id', () => {
+  it('rejects self-service requests from non-superadmins', async () => {
+    getSessionMock.mockResolvedValue(buildSession())
+
+    const response = await request(app).patch('/api/users/user-2').send({
+      name: 'Updated User',
+    })
+
+    expect(response.status).toBe(403)
+    expect(updateSuperadminUserMock).not.toHaveBeenCalled()
+  })
+
+  it('validates disableReason combinations before calling the service', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+
+    const response = await request(app).patch('/api/users/user-2').send({
+      disableReason: 'Nope',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body.error.code).toBe('validation_error')
+    expect(updateSuperadminUserMock).not.toHaveBeenCalled()
+  })
+
+  it('updates a user for a superadmin', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+
+    const response = await request(app).patch('/api/users/user-2').send({
+      email: 'updated@example.com',
+      firstName: ' Ada ',
+      disabled: true,
+      disableReason: 'Terms breach',
+    })
+
+    expect(response.status).toBe(200)
+    expect(updateSuperadminUserMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 'user-1',
+      }),
+      'user-2',
+      {
+        email: 'updated@example.com',
+        firstName: 'Ada',
+        disabled: true,
+        disableReason: 'Terms breach',
+      },
+    )
+  })
+
+  it('returns 500 when the service throws an unexpected error after partial work', async () => {
+    updateSuperadminUserMock.mockRejectedValueOnce(new Error('db write failed'))
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+
+    const response = await request(app).patch('/api/users/user-2').send({
+      temporaryPassword: 'temporary-pass',
+    })
+
+    expect(response.status).toBe(500)
+    expect(response.body.error.code).toBe('internal_server_error')
   })
 })
 

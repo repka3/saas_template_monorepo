@@ -7,7 +7,7 @@ const assertStartupReadiness = async () => {
   const superadmin = await prisma.user.findFirst({
     where: {
       systemRole: 'SUPERADMIN',
-      isActive: true,
+      banned: false,
     },
     select: {
       id: true,
@@ -15,7 +15,7 @@ const assertStartupReadiness = async () => {
   })
 
   if (!superadmin) {
-    throw new Error('Backend startup aborted: no active superadmin user found. Run the superadmin seed before starting the server.')
+    throw new Error('Backend startup aborted: no non-banned superadmin user found. Run the superadmin seed before starting the server.')
   }
 }
 

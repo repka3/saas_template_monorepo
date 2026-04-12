@@ -10,7 +10,7 @@ const additionalFields = {
       input: false,
       required: true,
     },
-    isActive: {
+    mustChangePassword: {
       type: 'boolean',
       input: false,
       required: true,

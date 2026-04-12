@@ -39,7 +39,11 @@ const ensureSuperadmin = async () => {
         name,
         emailVerified: true,
         systemRole: 'SUPERADMIN',
-        isActive: true,
+        role: 'superadmin',
+        banned: false,
+        banReason: null,
+        banExpires: null,
+        mustChangePassword: false,
       },
       create: {
         id: userId,
@@ -47,7 +51,9 @@ const ensureSuperadmin = async () => {
         name,
         emailVerified: true,
         systemRole: 'SUPERADMIN',
-        isActive: true,
+        role: 'superadmin',
+        banned: false,
+        mustChangePassword: false,
       },
     })
 
@@ -60,6 +66,7 @@ const ensureSuperadmin = async () => {
       },
       data: {
         systemRole: 'USER',
+        role: 'user',
       },
     })
 

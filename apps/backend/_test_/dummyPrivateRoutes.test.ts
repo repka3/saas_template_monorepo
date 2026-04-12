@@ -49,7 +49,9 @@ type MockSession = {
     name: string
     image: string | null
     systemRole: 'USER' | 'SUPERADMIN'
-    isActive: boolean
+    role: 'user' | 'superadmin'
+    banned: boolean
+    mustChangePassword: boolean
   }
 }
 
@@ -73,7 +75,9 @@ const buildSession = (overrides?: Partial<MockSession['user']>): MockSession => 
     name: 'Test User',
     image: null,
     systemRole: 'USER',
-    isActive: true,
+    role: 'user',
+    banned: false,
+    mustChangePassword: false,
     ...overrides,
   },
 })
@@ -153,8 +157,8 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('rejects GET /api/dummy-private for an inactive authenticated user', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ isActive: false }))
+  it('rejects GET /api/dummy-private for a banned authenticated user', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ banned: true }))
 
     const response = await request(app).get('/api/dummy-private')
 
@@ -162,14 +166,14 @@ describe('dummy private routes', () => {
     expect(response.body).toEqual({
       error: {
         code: 'forbidden',
-        message: 'Account is inactive',
+        message: 'Account is disabled',
         requestId: expect.any(String),
       },
     })
   })
 
-  it('rejects GET /api/dummy-superadmin for an inactive authenticated superadmin', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', isActive: false }))
+  it('rejects GET /api/dummy-superadmin for a banned authenticated superadmin', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin', banned: true }))
 
     const response = await request(app).get('/api/dummy-superadmin')
 
@@ -177,7 +181,22 @@ describe('dummy private routes', () => {
     expect(response.body).toEqual({
       error: {
         code: 'forbidden',
-        message: 'Account is inactive',
+        message: 'Account is disabled',
+        requestId: expect.any(String),
+      },
+    })
+  })
+
+  it('rejects protected routes when password change is required', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ mustChangePassword: true }))
+
+    const response = await request(app).get('/api/dummy-private')
+
+    expect(response.status).toBe(403)
+    expect(response.body).toEqual({
+      error: {
+        code: 'forbidden',
+        message: 'Password change required',
         requestId: expect.any(String),
       },
     })

@@ -14,18 +14,22 @@ enum SystemRole {
 }
 
 model User {
-  id            String     @id
-  name          String
-  email         String
-  emailVerified Boolean    @default(false)
-  systemRole    SystemRole @default(USER)
-  isActive      Boolean    @default(true)
-  image         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  profile       Profile?
-  sessions      Session[]
-  accounts      Account[]
+  id                 String     @id
+  name               String
+  email              String
+  emailVerified      Boolean    @default(false)
+  systemRole         SystemRole @default(USER)
+  role               String     @default("user")
+  banned             Boolean    @default(false)
+  banReason          String?
+  banExpires         DateTime?
+  mustChangePassword Boolean    @default(false)
+  image              String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  profile            Profile?
+  sessions           Session[]
+  accounts           Account[]
 
   @@unique([email])
   @@map("user")
@@ -43,15 +47,16 @@ model Profile {
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  impersonatedBy String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
   @@index([userId])

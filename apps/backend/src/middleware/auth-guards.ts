@@ -20,8 +20,8 @@ export const requireAuthenticatedUser: AuthenticatedRequestHandler = async (req,
       throw new HttpError(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required')
     }
 
-    if (authContext.user.isActive !== true) {
-      throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Account is inactive')
+    if (authContext.user.banned === true) {
+      throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Account is disabled')
     }
 
     res.locals.auth = authContext
@@ -29,6 +29,17 @@ export const requireAuthenticatedUser: AuthenticatedRequestHandler = async (req,
   } catch (error) {
     next(error)
   }
+}
+
+export const requirePasswordChangeNotRequired: AuthenticatedRequestHandler = (_req, res, next) => {
+  const authContext = getAuthContext(res)
+
+  if (authContext.user.mustChangePassword === true) {
+    next(new HttpError(403, ERROR_CODES.FORBIDDEN, 'Password change required'))
+    return
+  }
+
+  next()
 }
 
 export const requireSystemRole =

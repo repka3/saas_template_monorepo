@@ -9,19 +9,32 @@ type ValidationSchema = {
   query?: ZodTypeAny
 }
 
+const replaceRequestValue = <T extends 'body' | 'params' | 'query'>(
+  req: Parameters<RequestHandler>[0],
+  key: T,
+  value: unknown,
+) => {
+  Object.defineProperty(req, key, {
+    value,
+    configurable: true,
+    enumerable: true,
+    writable: true,
+  })
+}
+
 export const validate = (schema: ValidationSchema): RequestHandler => {
   return (req, _res, next) => {
     try {
       if (schema.params) {
-        req.params = schema.params.parse(req.params) as typeof req.params
+        replaceRequestValue(req, 'params', schema.params.parse(req.params))
       }
 
       if (schema.query) {
-        req.query = schema.query.parse(req.query) as typeof req.query
+        replaceRequestValue(req, 'query', schema.query.parse(req.query))
       }
 
       if (schema.body) {
-        req.body = schema.body.parse(req.body)
+        replaceRequestValue(req, 'body', schema.body.parse(req.body))
       }
 
       next()

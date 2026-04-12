@@ -1,0 +1,57 @@
+import type { SystemRole } from './auth.js'
+
+export interface SuperadminUser {
+  id: string
+  email: string
+  name: string
+  emailVerified: boolean
+  systemRole: SystemRole
+  role: string | null
+  banned: boolean
+  banReason: string | null
+  banExpires: string | null
+  mustChangePassword: boolean
+  image: string | null
+  createdAt: string
+  updatedAt: string
+  profile: {
+    firstName: string | null
+    lastName: string | null
+  }
+}
+
+export interface ListUsersQuery {
+  page?: number
+  pageSize?: number
+  query?: string
+}
+
+export interface ListUsersResponse {
+  users: SuperadminUser[]
+  pagination: {
+    page: number
+    pageSize: number
+    totalItems: number
+    totalPages: number
+  }
+}
+
+export interface CreateUserInput {
+  email: string
+  name: string
+  firstName?: string | null
+  lastName?: string | null
+  temporaryPassword: string
+  alreadyVerified?: boolean
+}
+
+export interface UpdateUserInput {
+  email?: string
+  name?: string
+  firstName?: string | null
+  lastName?: string | null
+  emailVerified?: boolean
+  disabled?: boolean
+  disableReason?: string | null
+  temporaryPassword?: string
+}

@@ -8,10 +8,10 @@ export const authUserAdditionalFields = {
     required: true,
     defaultValue: 'USER',
   },
-  isActive: {
+  mustChangePassword: {
     type: 'boolean',
     input: false,
     required: true,
-    defaultValue: true,
+    defaultValue: false,
   },
 } as const

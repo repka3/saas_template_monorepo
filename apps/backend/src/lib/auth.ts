@@ -1,6 +1,8 @@
 import { APIError, betterAuth } from 'better-auth'
 import { createAuthMiddleware } from 'better-auth/api'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { admin as adminPlugin } from 'better-auth/plugins/admin'
+import { adminAc, userAc } from 'better-auth/plugins/admin/access'
 
 import { authUserAdditionalFields } from './auth-schema.js'
 import { env } from './env.js'
@@ -15,6 +17,16 @@ export const auth = betterAuth({
   user: {
     additionalFields: authUserAdditionalFields,
   },
+  plugins: [
+    adminPlugin({
+      defaultRole: 'user',
+      adminRoles: ['superadmin'],
+      roles: {
+        user: userAc,
+        superadmin: adminAc,
+      },
+    }),
+  ],
   emailAndPassword: {
     enabled: true,
     revokeSessionsOnPasswordReset: true,
@@ -54,13 +66,13 @@ export const auth = betterAuth({
 
       const user = await prisma.user.findUnique({
         where: { email },
-        select: { isActive: true },
+        select: { banned: true },
       })
 
-      if (!user?.isActive) {
+      if (user?.banned) {
         throw APIError.from('FORBIDDEN', {
-          code: 'ACCOUNT_INACTIVE',
-          message: 'Your account is inactive.',
+          code: 'BANNED_USER',
+          message: 'Your account is disabled.',
         })
       }
     }),

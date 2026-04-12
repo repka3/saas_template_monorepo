@@ -1,11 +1,39 @@
 import type { RequestHandler } from 'express'
+import type { CreateUserInput, ListUsersQuery, SuperadminUser, UpdateUserInput } from '@repo/contracts'
 import { ERROR_CODES } from '@repo/contracts'
+import { fromNodeHeaders } from 'better-auth/node'
 
 import { HttpError } from '../lib/http-error.js'
-import { getUserById, updateMyProfile } from '../services/userServices.js'
+import {
+  createSuperadminUser,
+  getUserById,
+  listSuperadminUsers,
+  updateMyProfile,
+  updateSuperadminUser,
+} from '../services/userServices.js'
 import { assertCanReadUser } from '../utils/authorization/user-policy.js'
 import { getAuthUser, getAuthUserId } from '../utils/auth-utils.js'
 import type { UpdateProfileInput } from '../validation/user-profile.js'
+import type { CreateUserBodyInput, UpdateUserBodyInput, UpdateUserParamsInput } from '../validation/superadmin-users.js'
+
+export const listUsersController: RequestHandler = async (req, res) => {
+  const response = await listSuperadminUsers(req.query as ListUsersQuery)
+
+  res.status(200).json(response)
+}
+
+export const createUserController: RequestHandler<never, { user: SuperadminUser }, CreateUserBodyInput> = async (req, res) => {
+  const actorUserId = getAuthUserId(res)
+  const user = await createSuperadminUser(
+    {
+      actorUserId,
+      requestHeaders: fromNodeHeaders(req.headers),
+    },
+    req.body as CreateUserInput,
+  )
+
+  res.status(201).json({ user })
+}
 
 export const getUserByIdController: RequestHandler<{ id: string }> = async (req, res) => {
   const authUser = getAuthUser(res)
@@ -28,6 +56,21 @@ export const patchMyProfileController: RequestHandler<never, { user: unknown }, 
     input: req.body,
     avatarFile: req.file,
   })
+
+  res.status(200).json({ user })
+}
+
+export const updateUserController: RequestHandler<UpdateUserParamsInput, { user: SuperadminUser }, UpdateUserBodyInput> = async (req, res) => {
+  const actorUserId = getAuthUserId(res)
+  const user = await updateSuperadminUser(
+    {
+      actorUserId,
+      requestHeaders: fromNodeHeaders(req.headers),
+      requestId: req.id !== undefined ? String(req.id) : undefined,
+    },
+    req.params.id,
+    req.body as UpdateUserInput,
+  )
 
   res.status(200).json({ user })
 }

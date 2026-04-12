@@ -13,7 +13,6 @@ export interface UserResponse {
     createdAt: string
     updatedAt: string
     systemRole: 'USER' | 'SUPERADMIN'
-    isActive: boolean
     profile: UserProfile | null
   }
 }
