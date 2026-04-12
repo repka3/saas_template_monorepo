@@ -11,9 +11,12 @@ import { Input } from '@/components/ui/input'
 import SuperAdminLayout from '@/layouts/SuperAdminLayout'
 import UserLayout from '@/layouts/UserLayout'
 import HomeSuperadmin from '@/pages/superadmin/HomeSuperadmin'
+import SuperadminUserDetailPage from '@/pages/superadmin/SuperadminUserDetailPage'
+import SuperadminUsersPage from '@/pages/superadmin/SuperadminUsersPage'
+import ChangePasswordPage from '@/pages/shared/ChangePasswordPage'
 import HomeUser from '@/pages/user/HomeUser'
 import ProfilePage from '@/pages/shared/ProfilePage'
-import { authClient, deriveDefaultNameFromEmail, getHomePathForRole, toAbsoluteAppUrl, type AuthSessionUser } from '@/lib/auth-client'
+import { authClient, deriveDefaultNameFromEmail, getEntryPathForUser, toAbsoluteAppUrl, type AuthSessionUser } from '@/lib/auth-client'
 import { useAuth } from '@/hooks/use-auth'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -31,6 +34,14 @@ function App() {
       </Route>
 
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route
+        path="/change-password"
+        element={
+          <AuthenticatedRoute>
+            <ChangePasswordPage />
+          </AuthenticatedRoute>
+        }
+      />
 
       <Route
         path="/dashboard"
@@ -53,6 +64,8 @@ function App() {
       >
         <Route index element={<HomeSuperadmin />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="users" element={<SuperadminUsersPage />} />
+        <Route path="users/:id" element={<SuperadminUserDetailPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -61,27 +74,41 @@ function App() {
 }
 
 function RootRoute() {
-  const { homePath, isPending, user } = useAuth()
+  const { entryPath, isPending, user } = useAuth()
 
   if (isPending) {
     return <FullScreenState label="Loading session" />
   }
 
-  return <Navigate to={user ? homePath : '/login'} replace />
+  return <Navigate to={user ? entryPath : '/login'} replace />
 }
 
 function GuestOnlyRoute() {
-  const { homePath, isPending, user } = useAuth()
+  const { entryPath, isPending, user } = useAuth()
 
   if (isPending) {
     return <FullScreenState label="Loading session" />
   }
 
   if (user) {
-    return <Navigate to={homePath} replace />
+    return <Navigate to={entryPath} replace />
   }
 
   return <Outlet />
+}
+
+function AuthenticatedRoute({ children }: { children: ReactNode }) {
+  const { isPending, user } = useAuth()
+
+  if (isPending) {
+    return <FullScreenState label="Loading workspace" />
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <>{children}</>
 }
 
 function ProtectedRoute({ allowedRole, children }: { allowedRole: AuthSessionUser['systemRole']; children: ReactNode }) {
@@ -93,6 +120,10 @@ function ProtectedRoute({ allowedRole, children }: { allowedRole: AuthSessionUse
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (user.mustChangePassword) {
+    return <Navigate to="/change-password" replace />
   }
 
   if (user.systemRole !== allowedRole) {
@@ -142,7 +173,7 @@ function LoginPage() {
       return
     }
 
-    navigate(getHomePathForRole(result.data.user.systemRole), { replace: true })
+    navigate(getEntryPathForUser(result.data.user), { replace: true })
   }
 
   return (
@@ -221,7 +252,7 @@ function RegisterPage() {
       return
     }
 
-    navigate(getHomePathForRole(result.data.user.systemRole), { replace: true })
+    navigate(getEntryPathForUser(result.data.user), { replace: true })
   }
 
   return (
@@ -393,7 +424,7 @@ function ResetPasswordPage() {
 
 function VerifyEmailPage() {
   const navigate = useNavigate()
-  const { homePath, refetch, user } = useAuth()
+  const { entryPath, refetch, user } = useAuth()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
   const hasTriggered = useRef(false)
@@ -460,7 +491,7 @@ function VerifyEmailPage() {
     })()
   }, [refetch, token])
 
-  const destination = user ? homePath : '/login'
+  const destination = user ? entryPath : '/login'
 
   return (
     <AuthRouteLayout

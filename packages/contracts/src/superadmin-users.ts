@@ -6,7 +6,6 @@ export interface SuperadminUser {
   name: string
   emailVerified: boolean
   systemRole: SystemRole
-  role: string | null
   banned: boolean
   banReason: string | null
   banExpires: string | null
@@ -34,6 +33,18 @@ export interface ListUsersResponse {
     totalItems: number
     totalPages: number
   }
+}
+
+export interface GetSuperadminUserResponse {
+  user: SuperadminUser
+}
+
+export interface CreateSuperadminUserResponse {
+  user: SuperadminUser
+}
+
+export interface UpdateSuperadminUserResponse {
+  user: SuperadminUser
 }
 
 export interface CreateUserInput {

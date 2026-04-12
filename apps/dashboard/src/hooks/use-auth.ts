@@ -1,4 +1,4 @@
-import { authClient, getHomePathForRole } from '@/lib/auth-client'
+import { authClient, getEntryPathForUser, getHomePathForRole } from '@/lib/auth-client'
 
 export const useAuth = () => {
   const sessionState = authClient.useSession()
@@ -9,5 +9,6 @@ export const useAuth = () => {
     user,
     isAuthenticated: Boolean(user),
     homePath: user ? getHomePathForRole(user.systemRole) : '/login',
+    entryPath: getEntryPathForUser(user),
   }
 }

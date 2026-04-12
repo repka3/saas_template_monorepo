@@ -36,7 +36,6 @@ export const superadminUserSelect = {
   email: true,
   emailVerified: true,
   systemRole: true,
-  role: true,
   banned: true,
   banReason: true,
   banExpires: true,
@@ -73,7 +72,6 @@ const mapSuperadminUser = (user: SuperadminUserRecord): SuperadminUser => ({
   name: user.name,
   emailVerified: user.emailVerified,
   systemRole: user.systemRole,
-  role: user.role ?? null,
   banned: user.banned ?? false,
   banReason: user.banReason ?? null,
   banExpires: user.banExpires?.toISOString() ?? null,
@@ -116,6 +114,15 @@ export const getUserById = (id: string) =>
     where: { id },
     select: userSelect,
   })
+
+export const getSuperadminUserById = async (id: string): Promise<SuperadminUser | null> => {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: superadminUserSelect,
+  })
+
+  return user ? mapSuperadminUser(user) : null
+}
 
 export const listSuperadminUsers = async ({
   page = 1,

@@ -28,6 +28,7 @@ export function getProfileDisplayInitial(user: DisplayUser, profile: UserProfile
   return getProfileDisplayName(user, profile).charAt(0).toUpperCase() || 'U'
 }
 
-export function getProfileDisplayAvatarUrl(user: DisplayUser, _profile: UserProfile | null | undefined): string | null {
+export function getProfileDisplayAvatarUrl(user: DisplayUser, profile: UserProfile | null | undefined): string | null {
+  void profile
   return resolveAssetUrl(user.image ?? null) ?? null
 }

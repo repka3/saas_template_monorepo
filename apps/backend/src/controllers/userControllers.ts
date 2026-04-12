@@ -1,11 +1,19 @@
 import type { RequestHandler } from 'express'
-import type { CreateUserInput, ListUsersQuery, SuperadminUser, UpdateUserInput } from '@repo/contracts'
+import type {
+  CreateSuperadminUserResponse,
+  CreateUserInput,
+  GetSuperadminUserResponse,
+  ListUsersQuery,
+  UpdateSuperadminUserResponse,
+  UpdateUserInput,
+} from '@repo/contracts'
 import { ERROR_CODES } from '@repo/contracts'
 import { fromNodeHeaders } from 'better-auth/node'
 
 import { HttpError } from '../lib/http-error.js'
 import {
   createSuperadminUser,
+  getSuperadminUserById,
   getUserById,
   listSuperadminUsers,
   updateMyProfile,
@@ -22,7 +30,7 @@ export const listUsersController: RequestHandler = async (req, res) => {
   res.status(200).json(response)
 }
 
-export const createUserController: RequestHandler<never, { user: SuperadminUser }, CreateUserBodyInput> = async (req, res) => {
+export const createUserController: RequestHandler<never, CreateSuperadminUserResponse, CreateUserBodyInput> = async (req, res) => {
   const actorUserId = getAuthUserId(res)
   const user = await createSuperadminUser(
     {
@@ -50,6 +58,16 @@ export const getUserByIdController: RequestHandler<{ id: string }> = async (req,
   res.status(200).json({ user })
 }
 
+export const getSuperadminUserByIdController: RequestHandler<{ id: string }, GetSuperadminUserResponse> = async (req, res) => {
+  const user = await getSuperadminUserById(req.params.id)
+
+  if (!user) {
+    throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'User not found')
+  }
+
+  res.status(200).json({ user })
+}
+
 export const patchMyProfileController: RequestHandler<never, { user: unknown }, UpdateProfileInput> = async (req, res) => {
   const actorUserId = getAuthUserId(res)
   const user = await updateMyProfile(actorUserId, {
@@ -60,7 +78,7 @@ export const patchMyProfileController: RequestHandler<never, { user: unknown }, 
   res.status(200).json({ user })
 }
 
-export const updateUserController: RequestHandler<UpdateUserParamsInput, { user: SuperadminUser }, UpdateUserBodyInput> = async (req, res) => {
+export const updateUserController: RequestHandler<UpdateUserParamsInput, UpdateSuperadminUserResponse, UpdateUserBodyInput> = async (req, res) => {
   const actorUserId = getAuthUserId(res)
   const user = await updateSuperadminUser(
     {

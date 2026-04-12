@@ -24,6 +24,7 @@ Object.assign(process.env, {
 
 const getSessionMock = vi.fn()
 const getUserByIdMock = vi.fn()
+const getSuperadminUserByIdMock = vi.fn()
 const listSuperadminUsersMock = vi.fn()
 const createSuperadminUserMock = vi.fn()
 const updateSuperadminUserMock = vi.fn()
@@ -39,6 +40,7 @@ vi.mock('../src/lib/auth.js', () => ({
 
 vi.mock('../src/services/userServices.js', () => ({
   getUserById: getUserByIdMock,
+  getSuperadminUserById: getSuperadminUserByIdMock,
   listSuperadminUsers: listSuperadminUsersMock,
   createSuperadminUser: createSuperadminUserMock,
   updateSuperadminUser: updateSuperadminUserMock,
@@ -130,7 +132,6 @@ const buildSuperadminUser = (overrides?: Record<string, unknown>) => ({
   name: 'Created User',
   emailVerified: false,
   systemRole: 'USER',
-  role: 'user',
   banned: false,
   banReason: null,
   banExpires: null,
@@ -174,6 +175,8 @@ beforeEach(async () => {
   getSessionMock.mockResolvedValue(null)
   getUserByIdMock.mockReset()
   getUserByIdMock.mockResolvedValue(null)
+  getSuperadminUserByIdMock.mockReset()
+  getSuperadminUserByIdMock.mockResolvedValue(buildSuperadminUser())
   listSuperadminUsersMock.mockReset()
   listSuperadminUsersMock.mockResolvedValue({
     users: [],
@@ -287,9 +290,43 @@ describe('GET /api/users/:id', () => {
   })
 })
 
-describe('GET /api/users', () => {
+describe('GET /api/superadmin/users/:id', () => {
   it('rejects unauthenticated requests with 401', async () => {
-    const response = await request(app).get('/api/users')
+    const response = await request(app).get('/api/superadmin/users/user-2')
+
+    expect(response.status).toBe(401)
+    expect(getSuperadminUserByIdMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects authenticated non-superadmins with 403', async () => {
+    getSessionMock.mockResolvedValue(buildSession())
+
+    const response = await request(app).get('/api/superadmin/users/user-2')
+
+    expect(response.status).toBe(403)
+    expect(response.body.error.message).toBe('Superadmin role required')
+    expect(getSuperadminUserByIdMock).not.toHaveBeenCalled()
+  })
+
+  it('returns admin detail data for superadmins', async () => {
+    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSuperadminUserByIdMock.mockResolvedValue(buildSuperadminUser({ banned: true }))
+
+    const response = await request(app).get('/api/superadmin/users/user-2')
+
+    expect(response.status).toBe(200)
+    expect(getSuperadminUserByIdMock).toHaveBeenCalledWith('user-2')
+    expect(response.body.user).toMatchObject({
+      id: 'user-2',
+      banned: true,
+      mustChangePassword: true,
+    })
+  })
+})
+
+describe('GET /api/superadmin/users', () => {
+  it('rejects unauthenticated requests with 401', async () => {
+    const response = await request(app).get('/api/superadmin/users')
 
     expect(response.status).toBe(401)
     expect(listSuperadminUsersMock).not.toHaveBeenCalled()
@@ -298,7 +335,7 @@ describe('GET /api/users', () => {
   it('rejects authenticated non-superadmins with 403', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).get('/api/users')
+    const response = await request(app).get('/api/superadmin/users')
 
     expect(response.status).toBe(403)
     expect(response.body.error.message).toBe('Superadmin role required')
@@ -312,7 +349,7 @@ describe('GET /api/users', () => {
     })
     getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
 
-    const response = await request(app).get('/api/users?page=2&pageSize=5&query=%20Ada%20')
+    const response = await request(app).get('/api/superadmin/users?page=2&pageSize=5&query=%20Ada%20')
 
     expect(response.status).toBe(200)
     expect(listSuperadminUsersMock).toHaveBeenCalledWith({
@@ -329,11 +366,11 @@ describe('GET /api/users', () => {
   })
 })
 
-describe('POST /api/users', () => {
+describe('POST /api/superadmin/users', () => {
   it('rejects authenticated non-superadmins with 403', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).post('/api/users').send({
+    const response = await request(app).post('/api/superadmin/users').send({
       email: 'person@example.com',
       name: 'Person Example',
       temporaryPassword: 'temporary-pass',
@@ -346,7 +383,7 @@ describe('POST /api/users', () => {
   it('validates the temporary password length', async () => {
     getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
 
-    const response = await request(app).post('/api/users').send({
+    const response = await request(app).post('/api/superadmin/users').send({
       email: 'person@example.com',
       name: 'Person Example',
       temporaryPassword: 'short-pass',
@@ -360,7 +397,7 @@ describe('POST /api/users', () => {
   it('creates a user for a superadmin', async () => {
     getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
 
-    const response = await request(app).post('/api/users').send({
+    const response = await request(app).post('/api/superadmin/users').send({
       email: 'person@example.com',
       name: ' Person Example ',
       firstName: ' Person ',
@@ -390,11 +427,11 @@ describe('POST /api/users', () => {
   })
 })
 
-describe('PATCH /api/users/:id', () => {
+describe('PATCH /api/superadmin/users/:id', () => {
   it('rejects self-service requests from non-superadmins', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).patch('/api/users/user-2').send({
+    const response = await request(app).patch('/api/superadmin/users/user-2').send({
       name: 'Updated User',
     })
 
@@ -405,7 +442,7 @@ describe('PATCH /api/users/:id', () => {
   it('validates disableReason combinations before calling the service', async () => {
     getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/users/user-2').send({
+    const response = await request(app).patch('/api/superadmin/users/user-2').send({
       disableReason: 'Nope',
     })
 
@@ -417,7 +454,7 @@ describe('PATCH /api/users/:id', () => {
   it('updates a user for a superadmin', async () => {
     getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/users/user-2').send({
+    const response = await request(app).patch('/api/superadmin/users/user-2').send({
       email: 'updated@example.com',
       firstName: ' Ada ',
       disabled: true,
@@ -443,7 +480,7 @@ describe('PATCH /api/users/:id', () => {
     updateSuperadminUserMock.mockRejectedValueOnce(new Error('db write failed'))
     getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/users/user-2').send({
+    const response = await request(app).patch('/api/superadmin/users/user-2').send({
       temporaryPassword: 'temporary-pass',
     })
 

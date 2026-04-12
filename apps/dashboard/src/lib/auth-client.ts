@@ -39,4 +39,14 @@ export type { SystemRole }
 export const getHomePathForRole = (systemRole: string | null | undefined) =>
   getSharedHomePathForRole(systemRole === 'SUPERADMIN' ? 'SUPERADMIN' : 'USER')
 
+export const getEntryPathForUser = (
+  user: Pick<AuthSessionUser, 'mustChangePassword' | 'systemRole'> | null | undefined,
+) => {
+  if (!user) {
+    return '/login'
+  }
+
+  return user.mustChangePassword ? '/change-password' : getHomePathForRole(user.systemRole)
+}
+
 export const toAbsoluteAppUrl = (pathname: string) => new URL(pathname, window.location.origin).toString()

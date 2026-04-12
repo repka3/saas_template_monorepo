@@ -2,6 +2,7 @@ import { Router } from 'express'
 
 import {
   createUserController,
+  getSuperadminUserByIdController,
   getUserByIdController,
   listUsersController,
   patchMyProfileController,
@@ -17,11 +18,12 @@ export const userRouter = Router()
 
 const commonMiddleware = [requireAuthenticatedUser, requirePasswordChangeNotRequired] as const
 
-userRouter.get('/users', ...commonMiddleware, requireSystemRole('SUPERADMIN'), validate({ query: listUsersQuerySchema }), listUsersController)
-userRouter.post('/users', ...commonMiddleware, requireSystemRole('SUPERADMIN'), validate({ body: createUserSchema }), createUserController)
 userRouter.get('/users/:id', ...commonMiddleware, getUserByIdController)
+userRouter.get('/superadmin/users', ...commonMiddleware, requireSystemRole('SUPERADMIN'), validate({ query: listUsersQuerySchema }), listUsersController)
+userRouter.post('/superadmin/users', ...commonMiddleware, requireSystemRole('SUPERADMIN'), validate({ body: createUserSchema }), createUserController)
+userRouter.get('/superadmin/users/:id', ...commonMiddleware, requireSystemRole('SUPERADMIN'), validate({ params: updateUserParamsSchema }), getSuperadminUserByIdController)
 userRouter.patch(
-  '/users/:id',
+  '/superadmin/users/:id',
   ...commonMiddleware,
   requireSystemRole('SUPERADMIN'),
   validate({ params: updateUserParamsSchema, body: updateUserSchema }),

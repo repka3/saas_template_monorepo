@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, UserPen } from 'lucide-react'
+import { ChevronDown, KeyRound, LogOut, UserPen } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -70,6 +70,10 @@ export default function TopBar() {
             <DropdownMenuItem render={<Link to={`${homePath}/profile`} />}>
               <UserPen />
               <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link to="/change-password" />}>
+              <KeyRound />
+              <span>Change password</span>
             </DropdownMenuItem>
             <DropdownMenuItem disabled={isSigningOut} onClick={handleSignOut}>
               <LogOut />

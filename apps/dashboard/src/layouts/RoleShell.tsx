@@ -1,4 +1,4 @@
-import { House } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import TopBar from '@/layouts/TopBar'
@@ -18,10 +18,15 @@ import {
 
 type RoleShellProps = {
   homePath: string
+  navItems: Array<{
+    icon: LucideIcon
+    label: string
+    to: string
+  }>
   roleLabel: string
 }
 
-export default function RoleShell({ homePath, roleLabel }: RoleShellProps) {
+export default function RoleShell({ homePath, navItems, roleLabel }: RoleShellProps) {
   const { pathname } = useLocation()
 
   return (
@@ -38,12 +43,18 @@ export default function RoleShell({ homePath, roleLabel }: RoleShellProps) {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton isActive={pathname === homePath} render={<NavLink end to={homePath} />} tooltip="Home">
-                    <House />
-                    <span>Home</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {navItems.map((item) => {
+                  const isActive = item.to === homePath ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`)
+
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton isActive={isActive} render={<NavLink end={item.to === homePath} to={item.to} />} tooltip={item.label}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
