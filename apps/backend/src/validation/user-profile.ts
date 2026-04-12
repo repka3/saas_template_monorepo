@@ -6,9 +6,7 @@ const trimToNull = z
   .transform((v) => (v === '' ? null : v))
   .pipe(z.string().max(100).nullable())
 
-const booleanLike = z
-  .enum(['true', 'false', '1', '0'])
-  .transform((v) => v === 'true' || v === '1')
+const booleanLike = z.enum(['true', 'false', '1', '0']).transform((v) => v === 'true' || v === '1')
 
 export const updateProfileSchema = z.object({
   firstName: trimToNull.optional(),

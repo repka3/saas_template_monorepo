@@ -22,9 +22,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   }
 
   if (error instanceof ZodError) {
-    res.status(400).json(
-      buildApiErrorResponse(req, ERROR_CODES.VALIDATION_ERROR, 'Request validation failed', error.flatten() as Record<string, unknown>),
-    )
+    res.status(400).json(buildApiErrorResponse(req, ERROR_CODES.VALIDATION_ERROR, 'Request validation failed', error.flatten() as Record<string, unknown>))
     return
   }
 

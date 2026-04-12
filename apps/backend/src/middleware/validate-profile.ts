@@ -40,9 +40,7 @@ export const validateProfileUpdate: RequestHandler = async (req, _res, next) => 
     await cleanup()
 
     if (error instanceof ZodError) {
-      next(
-        new HttpError(400, ERROR_CODES.VALIDATION_ERROR, 'Request validation failed', error.flatten() as Record<string, unknown>),
-      )
+      next(new HttpError(400, ERROR_CODES.VALIDATION_ERROR, 'Request validation failed', error.flatten() as Record<string, unknown>))
       return
     }
 

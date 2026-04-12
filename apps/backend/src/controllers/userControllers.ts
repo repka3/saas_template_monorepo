@@ -25,12 +25,7 @@ import {
 import { assertCanReadUser } from '../utils/authorization/user-policy.js'
 import { getAuthUser, getAuthUserId } from '../utils/auth-utils.js'
 import type { UpdateProfileInput } from '../validation/user-profile.js'
-import type {
-  CreateUserBodyInput,
-  UpdateUserBodyInput,
-  UpdateUserParamsInput,
-  UpdateUserRoleBodyInput,
-} from '../validation/superadmin-users.js'
+import type { CreateUserBodyInput, UpdateUserBodyInput, UpdateUserParamsInput, UpdateUserRoleBodyInput } from '../validation/superadmin-users.js'
 
 export const listUsersController: RequestHandler = async (req, res) => {
   const response = await listSuperadminUsers(req.query as ListUsersQuery)
@@ -102,11 +97,7 @@ export const updateUserController: RequestHandler<UpdateUserParamsInput, UpdateS
   res.status(200).json({ user })
 }
 
-export const updateUserRoleController: RequestHandler<
-  UpdateUserParamsInput,
-  UpdateSuperadminUserRoleResponse,
-  UpdateUserRoleBodyInput
-> = async (req, res) => {
+export const updateUserRoleController: RequestHandler<UpdateUserParamsInput, UpdateSuperadminUserRoleResponse, UpdateUserRoleBodyInput> = async (req, res) => {
   const actorUserId = getAuthUserId(res)
   const user = await updateSuperadminUserRole(
     {

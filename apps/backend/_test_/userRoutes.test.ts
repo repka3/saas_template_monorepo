@@ -543,9 +543,7 @@ describe('PATCH /api/superadmin/users/:id/role', () => {
 
 describe('PATCH /api/users/me/profile', () => {
   it('rejects unauthenticated requests with 401', async () => {
-    const response = await request(app)
-      .patch('/api/users/me/profile')
-      .field('firstName', 'Updated')
+    const response = await request(app).patch('/api/users/me/profile').field('firstName', 'Updated')
 
     expect(response.status).toBe(401)
     expect(updateMyProfileMock).not.toHaveBeenCalled()
@@ -561,10 +559,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
     updateMyProfileMock.mockResolvedValue(dbUser)
 
-    const response = await request(app)
-      .patch('/api/users/me/profile')
-      .field('firstName', ' Ada ')
-      .field('lastName', ' Lovelace ')
+    const response = await request(app).patch('/api/users/me/profile').field('firstName', ' Ada ').field('lastName', ' Lovelace ')
 
     expect(response.status).toBe(200)
     expect(updateMyProfileMock).toHaveBeenCalledWith('user-1', {
@@ -594,10 +589,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
     updateMyProfileMock.mockResolvedValue(dbUser)
 
-    const response = await request(app)
-      .patch('/api/users/me/profile')
-      .field('firstName', '   ')
-      .field('lastName', '')
+    const response = await request(app).patch('/api/users/me/profile').field('firstName', '   ').field('lastName', '')
 
     expect(response.status).toBe(200)
     expect(updateMyProfileMock).toHaveBeenCalledWith('user-1', {
@@ -696,9 +688,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
     updateMyProfileMock.mockResolvedValue(dbUser)
 
-    const response = await request(app)
-      .patch('/api/users/me/profile')
-      .field('removeAvatar', 'true')
+    const response = await request(app).patch('/api/users/me/profile').field('removeAvatar', 'true')
 
     expect(response.status).toBe(200)
     expect(updateMyProfileMock).toHaveBeenCalledWith('user-1', {
@@ -761,9 +751,7 @@ describe('PATCH /api/users/me/profile', () => {
   it('rejects requests with no effective changes', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app)
-      .patch('/api/users/me/profile')
-      .field('removeAvatar', 'false')
+    const response = await request(app).patch('/api/users/me/profile').field('removeAvatar', 'false')
 
     expect(response.status).toBe(400)
     expect(response.body.error).toMatchObject({
@@ -793,9 +781,7 @@ describe('PATCH /api/users/me/profile', () => {
   it('maps Multer field errors into the API error envelope', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app)
-      .patch('/api/users/me/profile')
-      .attach('photo', validAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
+    const response = await request(app).patch('/api/users/me/profile').attach('photo', validAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
 
     expect(response.status).toBe(400)
     expect(response.body).toEqual({

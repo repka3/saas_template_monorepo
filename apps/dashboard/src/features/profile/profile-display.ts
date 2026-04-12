@@ -12,9 +12,7 @@ const normalizeNamePart = (value: string | null | undefined) => value?.trim() ||
 
 export function getProfileDisplayName(user: DisplayUser, profile: UserProfile | null | undefined): string {
   if (profile) {
-    const profileName = [normalizeNamePart(profile.firstName), normalizeNamePart(profile.lastName)]
-      .filter(Boolean)
-      .join(' ')
+    const profileName = [normalizeNamePart(profile.firstName), normalizeNamePart(profile.lastName)].filter(Boolean).join(' ')
 
     if (profileName) {
       return profileName

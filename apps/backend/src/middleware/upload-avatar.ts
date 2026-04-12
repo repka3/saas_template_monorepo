@@ -72,7 +72,6 @@ export const deleteUploadedFile = async (filePath: string): Promise<void> => {
   }
 }
 
-export const isMulterError = (error: unknown): error is MulterError =>
-  error instanceof multer.MulterError
+export const isMulterError = (error: unknown): error is MulterError => error instanceof multer.MulterError
 
 export { avatarDir }

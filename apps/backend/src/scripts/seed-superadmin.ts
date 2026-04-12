@@ -47,10 +47,7 @@ const seedSuperadmin = async () => {
       }
       created = true
     } catch (error) {
-      const duplicateEmail =
-        error instanceof APIError &&
-        typeof error.body?.code === 'string' &&
-        error.body.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
+      const duplicateEmail = error instanceof APIError && typeof error.body?.code === 'string' && error.body.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
 
       if (!duplicateEmail) {
         throw error

@@ -20,7 +20,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useCreateSuperadminUserMutation, useSuperadminUsersQuery } from '@/features/superadmin-users/superadmin-users-hooks'
-import { buildVisiblePages, copyText, EMAIL_PATTERN, formatDateTime, generateTemporaryPassword, trimToUndefined } from '@/features/superadmin-users/superadmin-users-utils'
+import {
+  buildVisiblePages,
+  copyText,
+  EMAIL_PATTERN,
+  formatDateTime,
+  generateTemporaryPassword,
+  trimToUndefined,
+} from '@/features/superadmin-users/superadmin-users-utils'
 import { APP_ROLES, parseAuthRoles } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 
@@ -154,10 +161,7 @@ export default function SuperadminUsersPage() {
       {
         header: 'Actions',
         cell: ({ row }) => (
-          <Link
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
-            to={`/superadmin/users/${row.original.id}`}
-          >
+          <Link className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))} to={`/superadmin/users/${row.original.id}`}>
             View
           </Link>
         ),
@@ -317,9 +321,7 @@ export default function SuperadminUsersPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : usersQuery.isError ? (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-              {usersQuery.error.message}
-            </div>
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{usersQuery.error.message}</div>
           ) : (
             <>
               <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">

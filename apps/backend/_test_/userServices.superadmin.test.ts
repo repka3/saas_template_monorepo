@@ -61,8 +61,7 @@ vi.mock('../src/lib/logger.js', () => ({
   },
 }))
 
-const { createSuperadminUser, listSuperadminUsers, updateSuperadminUser, updateSuperadminUserRole } =
-  await import('../src/services/userServices.js')
+const { createSuperadminUser, listSuperadminUsers, updateSuperadminUser, updateSuperadminUserRole } = await import('../src/services/userServices.js')
 
 const buildUserRecord = (overrides?: Record<string, unknown>) => ({
   id: 'user-2',
@@ -266,7 +265,9 @@ describe('createSuperadminUser', () => {
 describe('updateSuperadminUser', () => {
   it('resets emailVerified on email change, updates password state, and upserts profile', async () => {
     const txProfileUpsert = vi.fn().mockResolvedValue(undefined)
-    const txUserFindUniqueOrThrow = vi.fn().mockResolvedValue(buildUserRecord({ email: 'updated@example.com', profile: { firstName: 'Ada', lastName: 'User' } }))
+    const txUserFindUniqueOrThrow = vi
+      .fn()
+      .mockResolvedValue(buildUserRecord({ email: 'updated@example.com', profile: { firstName: 'Ada', lastName: 'User' } }))
 
     prismaMock.$transaction.mockImplementationOnce(async (input: unknown) => {
       if (typeof input !== 'function') {

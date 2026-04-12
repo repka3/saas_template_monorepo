@@ -38,9 +38,7 @@ export type { AppRole }
 
 export const getHomePathForRole = (role: string | null | undefined) => getSharedHomePathForRole(role)
 
-export const getEntryPathForUser = (
-  user: Pick<AuthSessionUser, 'mustChangePassword' | 'role'> | null | undefined,
-) => {
+export const getEntryPathForUser = (user: Pick<AuthSessionUser, 'mustChangePassword' | 'role'> | null | undefined) => {
   if (!user) {
     return '/login'
   }

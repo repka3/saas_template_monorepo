@@ -17,9 +17,7 @@ export default function TopBar() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [avatarFailed, setAvatarFailed] = useState(false)
   const profile = data?.user.profile ?? null
-  const displayAvatar = user
-    ? getProfileDisplayAvatarUrl(user, profile)
-    : null
+  const displayAvatar = user ? getProfileDisplayAvatarUrl(user, profile) : null
 
   useEffect(() => {
     setAvatarFailed(false)

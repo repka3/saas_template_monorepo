@@ -54,10 +54,7 @@ describe('error handling architecture', () => {
     })
 
     it('uses ERROR_CODES registry codes for invalid JSON', async () => {
-      const response = await request(app)
-        .post('/api/ping')
-        .set('Content-Type', 'application/json')
-        .send('{ invalid json }')
+      const response = await request(app).post('/api/ping').set('Content-Type', 'application/json').send('{ invalid json }')
 
       expect(response.status).toBe(400)
       expect(response.body.error.code).toBe('invalid_json')
@@ -86,9 +83,7 @@ describe('error handling architecture', () => {
   describe('request ID correlation', () => {
     it('echoes back a provided x-request-id', async () => {
       const traceId = 'test-trace-id-12345'
-      const response = await request(app)
-        .get('/api/does-not-exist')
-        .set('x-request-id', traceId)
+      const response = await request(app).get('/api/does-not-exist').set('x-request-id', traceId)
 
       expect(response.body.error.requestId).toBe(traceId)
     })

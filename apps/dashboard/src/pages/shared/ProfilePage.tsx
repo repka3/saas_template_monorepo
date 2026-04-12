@@ -49,14 +49,7 @@ function AvatarPreview({
     return <span className={fallbackClassName}>{fallback}</span>
   }
 
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className={className}
-      onError={() => setHasImageError(true)}
-    />
-  )
+  return <img src={src} alt={alt} className={className} onError={() => setHasImageError(true)} />
 }
 
 export default function ProfilePage() {
@@ -165,17 +158,11 @@ export default function ProfilePage() {
     setRemoveAvatar(true)
   }
 
-  const persistedAvatar = data?.user
-    ? getProfileDisplayAvatarUrl(data.user, profile)
-    : null
+  const persistedAvatar = data?.user ? getProfileDisplayAvatarUrl(data.user, profile) : null
 
-  const displayAvatar = removeAvatar
-    ? null
-    : pendingPreview ?? persistedAvatar
+  const displayAvatar = removeAvatar ? null : (pendingPreview ?? persistedAvatar)
 
-  const initial = data?.user
-    ? getProfileDisplayInitial(data.user, profile)
-    : (email || 'U').charAt(0).toUpperCase()
+  const initial = data?.user ? getProfileDisplayInitial(data.user, profile) : (email || 'U').charAt(0).toUpperCase()
 
   const onSubmit = async (values: ProfileFormValues) => {
     try {
@@ -269,28 +256,14 @@ export default function ProfilePage() {
               />
 
               <div className="flex flex-col gap-2 text-center sm:text-left">
-                <p className="text-sm text-muted-foreground">
-                  JPEG, PNG, or WebP. Max 2 MB.
-                </p>
+                <p className="text-sm text-muted-foreground">JPEG, PNG, or WebP. Max 2 MB.</p>
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={mutation.isPending}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
+                  <Button type="button" variant="outline" size="sm" disabled={mutation.isPending} onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-1.5 size-3.5" />
                     Upload
                   </Button>
                   {(pendingPreview || persistedAvatar) && !removeAvatar && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={mutation.isPending}
-                      onClick={handleRemoveAvatar}
-                    >
+                    <Button type="button" variant="outline" size="sm" disabled={mutation.isPending} onClick={handleRemoveAvatar}>
                       <Trash2 className="mr-1.5 size-3.5" />
                       Remove
                     </Button>
@@ -303,31 +276,13 @@ export default function ProfilePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>
-                <Input
-                  id="firstName"
-                  placeholder="First name"
-                  disabled={mutation.isPending}
-                  {...form.register('firstName')}
-                />
-                {form.formState.errors.firstName && (
-                  <p className="text-xs text-destructive">
-                    {form.formState.errors.firstName.message}
-                  </p>
-                )}
+                <Input id="firstName" placeholder="First name" disabled={mutation.isPending} {...form.register('firstName')} />
+                {form.formState.errors.firstName && <p className="text-xs text-destructive">{form.formState.errors.firstName.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last name</Label>
-                <Input
-                  id="lastName"
-                  placeholder="Last name"
-                  disabled={mutation.isPending}
-                  {...form.register('lastName')}
-                />
-                {form.formState.errors.lastName && (
-                  <p className="text-xs text-destructive">
-                    {form.formState.errors.lastName.message}
-                  </p>
-                )}
+                <Input id="lastName" placeholder="Last name" disabled={mutation.isPending} {...form.register('lastName')} />
+                {form.formState.errors.lastName && <p className="text-xs text-destructive">{form.formState.errors.lastName.message}</p>}
               </div>
             </div>
 
@@ -340,9 +295,7 @@ export default function ProfilePage() {
             {/* Submit */}
             <div className="flex justify-end">
               <Button type="submit" disabled={mutation.isPending || isCropping}>
-                {mutation.isPending && (
-                  <LoaderCircle className="mr-2 size-4 animate-spin" />
-                )}
+                {mutation.isPending && <LoaderCircle className="mr-2 size-4 animate-spin" />}
                 {mutation.isPending ? 'Saving' : 'Save changes'}
               </Button>
             </div>
@@ -356,9 +309,7 @@ export default function ProfilePage() {
           <div className="mx-4 flex w-full max-w-md flex-col overflow-hidden rounded-xl bg-popover shadow-2xl ring-1 ring-foreground/10">
             <div className="border-b px-4 py-3">
               <p className="font-medium">Crop avatar</p>
-              <p className="text-sm text-muted-foreground">
-                Drag to reposition. Use the slider to zoom.
-              </p>
+              <p className="text-sm text-muted-foreground">Drag to reposition. Use the slider to zoom.</p>
             </div>
 
             <div className="relative aspect-square w-full bg-black">

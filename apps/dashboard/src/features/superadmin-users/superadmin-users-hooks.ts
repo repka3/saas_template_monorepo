@@ -35,8 +35,7 @@ export const superadminUsersKeys = {
 const listSuperadminUsers = async (params: ListUsersQuery): Promise<ListUsersResponse> =>
   apiFetch<ListUsersResponse>(`/api/superadmin/users?${buildUsersSearch(params)}`)
 
-const getSuperadminUser = async (userId: string): Promise<GetSuperadminUserResponse> =>
-  apiFetch<GetSuperadminUserResponse>(`/api/superadmin/users/${userId}`)
+const getSuperadminUser = async (userId: string): Promise<GetSuperadminUserResponse> => apiFetch<GetSuperadminUserResponse>(`/api/superadmin/users/${userId}`)
 
 const createSuperadminUser = async (payload: CreateUserInput): Promise<CreateSuperadminUserResponse> =>
   apiFetch<CreateSuperadminUserResponse>('/api/superadmin/users', {
@@ -47,13 +46,7 @@ const createSuperadminUser = async (payload: CreateUserInput): Promise<CreateSup
     body: JSON.stringify(payload),
   })
 
-const updateSuperadminUser = async ({
-  userId,
-  payload,
-}: {
-  userId: string
-  payload: UpdateUserInput
-}): Promise<UpdateSuperadminUserResponse> =>
+const updateSuperadminUser = async ({ userId, payload }: { userId: string; payload: UpdateUserInput }): Promise<UpdateSuperadminUserResponse> =>
   apiFetch<UpdateSuperadminUserResponse>(`/api/superadmin/users/${userId}`, {
     method: 'PATCH',
     headers: {
@@ -62,13 +55,7 @@ const updateSuperadminUser = async ({
     body: JSON.stringify(payload),
   })
 
-const updateSuperadminUserRole = async ({
-  userId,
-  payload,
-}: {
-  userId: string
-  payload: UpdateUserRoleInput
-}): Promise<UpdateSuperadminUserRoleResponse> =>
+const updateSuperadminUserRole = async ({ userId, payload }: { userId: string; payload: UpdateUserRoleInput }): Promise<UpdateSuperadminUserRoleResponse> =>
   apiFetch<UpdateSuperadminUserRoleResponse>(`/api/superadmin/users/${userId}/role`, {
     method: 'PATCH',
     headers: {

@@ -226,8 +226,7 @@ describe('dummy private routes', () => {
         code: 'TEST_ERROR',
         message: 'This is a test error meant to be handled by the frontend, depending on the page or situation.',
         details: {
-          additionalInfo:
-            'This is a dummy error with additional structured information. It is mainly useful for verifying frontend error handling.',
+          additionalInfo: 'This is a dummy error with additional structured information. It is mainly useful for verifying frontend error handling.',
         },
         requestId: expect.any(String),
       },

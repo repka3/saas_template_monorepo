@@ -60,7 +60,12 @@ describe('sanitizeForLog', () => {
   })
 
   it('recurses into arrays', () => {
-    const input = { users: [{ name: 'alice', password: 'x' }, { name: 'bob', password: 'y' }] }
+    const input = {
+      users: [
+        { name: 'alice', password: 'x' },
+        { name: 'bob', password: 'y' },
+      ],
+    }
     const result = sanitizeForLog(input) as Record<string, unknown>
     const users = result.users as Record<string, unknown>[]
 

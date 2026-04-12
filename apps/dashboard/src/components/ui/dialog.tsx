@@ -47,10 +47,7 @@ function DialogContent({ className, children, ...props }: DialogPrimitive.Popup.
         {...props}
       >
         {children}
-        <DialogPrimitive.Close
-          data-slot="dialog-close"
-          render={<Button className="absolute top-3 right-3" size="icon-sm" variant="ghost" />}
-        >
+        <DialogPrimitive.Close data-slot="dialog-close" render={<Button className="absolute top-3 right-3" size="icon-sm" variant="ghost" />}>
           <XIcon />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

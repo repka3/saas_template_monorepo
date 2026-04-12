@@ -14,13 +14,7 @@ import { authenticatedRouteRateLimit } from '../middleware/rate-limit.js'
 import { uploadAvatar } from '../middleware/upload-avatar.js'
 import { validate } from '../middleware/validate.js'
 import { validateProfileUpdate } from '../middleware/validate-profile.js'
-import {
-  createUserSchema,
-  listUsersQuerySchema,
-  updateUserParamsSchema,
-  updateUserRoleSchema,
-  updateUserSchema,
-} from '../validation/superadmin-users.js'
+import { createUserSchema, listUsersQuerySchema, updateUserParamsSchema, updateUserRoleSchema, updateUserSchema } from '../validation/superadmin-users.js'
 
 export const userRouter = Router()
 
@@ -29,7 +23,13 @@ const commonMiddleware = [requireAuthenticatedUser, authenticatedRouteRateLimit,
 userRouter.get('/users/:id', ...commonMiddleware, getUserByIdController)
 userRouter.get('/superadmin/users', ...commonMiddleware, requireRole('superadmin'), validate({ query: listUsersQuerySchema }), listUsersController)
 userRouter.post('/superadmin/users', ...commonMiddleware, requireRole('superadmin'), validate({ body: createUserSchema }), createUserController)
-userRouter.get('/superadmin/users/:id', ...commonMiddleware, requireRole('superadmin'), validate({ params: updateUserParamsSchema }), getSuperadminUserByIdController)
+userRouter.get(
+  '/superadmin/users/:id',
+  ...commonMiddleware,
+  requireRole('superadmin'),
+  validate({ params: updateUserParamsSchema }),
+  getSuperadminUserByIdController,
+)
 userRouter.patch(
   '/superadmin/users/:id',
   ...commonMiddleware,

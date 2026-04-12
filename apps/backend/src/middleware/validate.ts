@@ -9,11 +9,7 @@ type ValidationSchema = {
   query?: ZodTypeAny
 }
 
-const replaceRequestValue = <T extends 'body' | 'params' | 'query'>(
-  req: Parameters<RequestHandler>[0],
-  key: T,
-  value: unknown,
-) => {
+const replaceRequestValue = <T extends 'body' | 'params' | 'query'>(req: Parameters<RequestHandler>[0], key: T, value: unknown) => {
   Object.defineProperty(req, key, {
     value,
     configurable: true,

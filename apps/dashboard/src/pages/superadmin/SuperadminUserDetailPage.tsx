@@ -39,15 +39,7 @@ const formatRoleLabel = (role: string) =>
     .map((value) => value[0]?.toUpperCase() + value.slice(1))
     .join(', ') || role
 
-const UserStatusBadges = ({
-  emailVerified,
-  banned,
-  mustChangePassword,
-}: {
-  emailVerified: boolean
-  banned: boolean
-  mustChangePassword: boolean
-}) => (
+const UserStatusBadges = ({ emailVerified, banned, mustChangePassword }: { emailVerified: boolean; banned: boolean; mustChangePassword: boolean }) => (
   <div className="flex flex-wrap gap-1.5">
     <Badge variant={emailVerified ? 'success' : 'outline'}>{emailVerified ? 'Verified' : 'Unverified'}</Badge>
     <Badge variant={banned ? 'destructive' : 'secondary'}>{banned ? 'Disabled' : 'Active'}</Badge>
@@ -321,7 +313,9 @@ export default function SuperadminUserDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Identity</CardTitle>
-              <CardDescription>Update email, display name, and profile fields. Changing email resets verification unless you explicitly keep it enabled.</CardDescription>
+              <CardDescription>
+                Update email, display name, and profile fields. Changing email resets verification unless you explicitly keep it enabled.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form className="grid gap-4" onSubmit={handleIdentitySubmit}>
@@ -358,10 +352,7 @@ export default function SuperadminUserDetailPage() {
                   <Field>
                     <FieldLabel>Last name</FieldLabel>
                     <FieldContent>
-                      <Input
-                        value={identityForm.lastName}
-                        onChange={(event) => setIdentityForm((current) => ({ ...current, lastName: event.target.value }))}
-                      />
+                      <Input value={identityForm.lastName} onChange={(event) => setIdentityForm((current) => ({ ...current, lastName: event.target.value }))} />
                     </FieldContent>
                   </Field>
                 </div>

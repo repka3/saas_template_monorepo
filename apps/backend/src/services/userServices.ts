@@ -189,10 +189,7 @@ export const listSuperadminUsers = async ({
   }
 }
 
-export const createSuperadminUser = async (
-  context: SuperadminActionContext,
-  input: CreateUserInput,
-): Promise<SuperadminUser> => {
+export const createSuperadminUser = async (context: SuperadminActionContext, input: CreateUserInput): Promise<SuperadminUser> => {
   try {
     const role = input.role ?? 'user'
 
@@ -246,11 +243,7 @@ export const createSuperadminUser = async (
   }
 }
 
-export const updateSuperadminUser = async (
-  context: SuperadminActionContext,
-  userId: string,
-  input: UpdateUserInput,
-): Promise<SuperadminUser> => {
+export const updateSuperadminUser = async (context: SuperadminActionContext, userId: string, input: UpdateUserInput): Promise<SuperadminUser> => {
   const existingUser = await getSuperadminUserByIdOrNull(userId)
 
   if (!existingUser) {
@@ -268,8 +261,7 @@ export const updateSuperadminUser = async (
     const emailChanged = nextEmail !== existingUser.email
     const nextName = input.name !== undefined ? input.name.trim() : existingUser.name
     const nameChanged = nextName !== existingUser.name
-    const nextEmailVerified =
-      input.emailVerified !== undefined ? input.emailVerified : emailChanged ? false : undefined
+    const nextEmailVerified = input.emailVerified !== undefined ? input.emailVerified : emailChanged ? false : undefined
 
     if (emailChanged || nameChanged || nextEmailVerified !== undefined) {
       await auth.api.adminUpdateUser({
@@ -386,11 +378,7 @@ export const updateSuperadminUser = async (
   }
 }
 
-export const updateSuperadminUserRole = async (
-  context: SuperadminActionContext,
-  userId: string,
-  input: UpdateUserRoleInput,
-): Promise<SuperadminUser> => {
+export const updateSuperadminUserRole = async (context: SuperadminActionContext, userId: string, input: UpdateUserRoleInput): Promise<SuperadminUser> => {
   const existingUser = await getSuperadminUserByIdOrNull(userId)
 
   if (!existingUser) {
@@ -465,10 +453,7 @@ const safeDeletePreviousAvatar = async (filePath: string): Promise<void> => {
   }
 }
 
-export const updateMyProfile = async (
-  actorUserId: string,
-  { input, avatarFile, requestHeaders }: UpdateMyProfileParams,
-) => {
+export const updateMyProfile = async (actorUserId: string, { input, avatarFile, requestHeaders }: UpdateMyProfileParams) => {
   const currentUser = await prisma.user.findUnique({
     where: { id: actorUserId },
     select: { image: true },
