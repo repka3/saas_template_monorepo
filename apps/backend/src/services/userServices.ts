@@ -18,7 +18,7 @@ export const userSelect = {
   name: true,
   email: true,
   emailVerified: true,
-  systemRole: true,
+  role: true,
   image: true,
   createdAt: true,
   updatedAt: true,
@@ -35,7 +35,7 @@ export const superadminUserSelect = {
   name: true,
   email: true,
   emailVerified: true,
-  systemRole: true,
+  role: true,
   banned: true,
   banReason: true,
   banExpires: true,
@@ -62,6 +62,7 @@ interface SuperadminActionContext {
 interface UpdateMyProfileParams {
   input: UpdateProfileInput
   avatarFile?: Express.Multer.File
+  requestHeaders: Headers
 }
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
@@ -71,7 +72,7 @@ const mapSuperadminUser = (user: SuperadminUserRecord): SuperadminUser => ({
   email: user.email,
   name: user.name,
   emailVerified: user.emailVerified,
-  systemRole: user.systemRole,
+  role: user.role,
   banned: user.banned ?? false,
   banReason: user.banReason ?? null,
   banExpires: user.banExpires?.toISOString() ?? null,
@@ -180,13 +181,23 @@ export const createSuperadminUser = async (
         name: input.name.trim(),
         role: 'user',
         data: {
-          emailVerified: input.alreadyVerified ?? false,
-          systemRole: 'USER',
           mustChangePassword: true,
         },
       },
       headers: context.requestHeaders,
     })
+
+    if (input.alreadyVerified) {
+      await auth.api.adminUpdateUser({
+        body: {
+          userId: createdUser.user.id,
+          data: {
+            emailVerified: true,
+          },
+        },
+        headers: context.requestHeaders,
+      })
+    }
 
     await prisma.profile.upsert({
       where: { userId: createdUser.user.id },
@@ -262,6 +273,25 @@ export const updateSuperadminUser = async (
         headers: context.requestHeaders,
       })
       completedMutationSteps.push('setUserPassword')
+
+      await auth.api.revokeUserSessions({
+        body: {
+          userId,
+        },
+        headers: context.requestHeaders,
+      })
+      completedMutationSteps.push('revokeUserSessions')
+
+      await auth.api.adminUpdateUser({
+        body: {
+          userId,
+          data: {
+            mustChangePassword: true,
+          },
+        },
+        headers: context.requestHeaders,
+      })
+      completedMutationSteps.push('adminUpdateUser:mustChangePassword')
     }
 
     if (input.disabled === true) {
@@ -297,15 +327,6 @@ export const updateSuperadminUser = async (
           update: {
             ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
             ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
-          },
-        })
-      }
-
-      if (input.temporaryPassword !== undefined) {
-        await tx.user.update({
-          where: { id: userId },
-          data: {
-            mustChangePassword: true,
           },
         })
       }
@@ -372,7 +393,10 @@ const safeDeletePreviousAvatar = async (filePath: string): Promise<void> => {
   }
 }
 
-export const updateMyProfile = async (actorUserId: string, { input, avatarFile }: UpdateMyProfileParams) => {
+export const updateMyProfile = async (
+  actorUserId: string,
+  { input, avatarFile, requestHeaders }: UpdateMyProfileParams,
+) => {
   const currentUser = await prisma.user.findUnique({
     where: { id: actorUserId },
     select: { image: true },
@@ -395,27 +419,20 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile }
   if (input.firstName !== undefined) profileData.firstName = input.firstName
   if (input.lastName !== undefined) profileData.lastName = input.lastName
 
-  let user: Prisma.UserGetPayload<{ select: typeof userSelect }>
   try {
-    user = await prisma.$transaction(async (tx) => {
-      await tx.profile.upsert({
-        where: { userId: actorUserId },
-        create: { userId: actorUserId, ...profileData },
-        update: profileData,
+    if (newAvatarPublicPath !== undefined) {
+      await auth.api.updateUser({
+        body: {
+          image: newAvatarPublicPath,
+        },
+        headers: requestHeaders,
       })
+    }
 
-      if (newAvatarPublicPath !== undefined) {
-        return tx.user.update({
-          where: { id: actorUserId },
-          data: { image: newAvatarPublicPath },
-          select: userSelect,
-        })
-      }
-
-      return tx.user.findUniqueOrThrow({
-        where: { id: actorUserId },
-        select: userSelect,
-      })
+    await prisma.profile.upsert({
+      where: { userId: actorUserId },
+      create: { userId: actorUserId, ...profileData },
+      update: profileData,
     })
   } catch (error) {
     if (avatarFile) {
@@ -423,6 +440,11 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile }
     }
     throw error
   }
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: actorUserId },
+    select: userSelect,
+  })
 
   if (newAvatarPublicPath !== undefined && previousAvatarPath) {
     const oldDiskPath = resolveAvatarDiskPath(previousAvatarPath)

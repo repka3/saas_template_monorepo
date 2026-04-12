@@ -19,7 +19,7 @@ Object.assign(process.env, {
 
 const prismaMock = {
   user: {
-    findUnique: vi.fn(),
+    count: vi.fn(),
     update: vi.fn(),
   },
 }
@@ -28,40 +28,36 @@ vi.mock('../src/lib/prisma.js', () => ({
   prisma: prismaMock,
 }))
 
-const { blockBannedUserBeforeSignIn, clearMustChangePasswordAfterPasswordChange } = await import('../src/lib/auth.js')
+const { blockPublicSignUpAfterBootstrap, clearMustChangePasswordAfterPasswordChange } = await import('../src/lib/auth.js')
 
 beforeEach(() => {
-  prismaMock.user.findUnique.mockReset()
-  prismaMock.user.findUnique.mockResolvedValue(null)
+  prismaMock.user.count.mockReset()
+  prismaMock.user.count.mockResolvedValue(0)
   prismaMock.user.update.mockReset()
   prismaMock.user.update.mockResolvedValue(undefined)
 })
 
-describe('blockBannedUserBeforeSignIn', () => {
-  it('ignores non sign-in paths', async () => {
-    await blockBannedUserBeforeSignIn({
+describe('blockPublicSignUpAfterBootstrap', () => {
+  it('ignores non sign-up paths', async () => {
+    await blockPublicSignUpAfterBootstrap({
       path: '/change-password',
       context: {},
     })
 
-    expect(prismaMock.user.findUnique).not.toHaveBeenCalled()
+    expect(prismaMock.user.count).not.toHaveBeenCalled()
   })
 
-  it('throws when the matched user is banned', async () => {
-    prismaMock.user.findUnique.mockResolvedValue({ banned: true })
+  it('throws once bootstrap has already created a user', async () => {
+    prismaMock.user.count.mockResolvedValue(1)
 
     await expect(
-      blockBannedUserBeforeSignIn({
-        path: '/sign-in/email',
-        body: { email: 'Blocked@example.com' },
+      blockPublicSignUpAfterBootstrap({
+        path: '/sign-up/email',
         context: {},
       }),
     ).rejects.toBeInstanceOf(APIError)
 
-    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-      where: { email: 'blocked@example.com' },
-      select: { banned: true },
-    })
+    expect(prismaMock.user.count).toHaveBeenCalledTimes(1)
   })
 })
 

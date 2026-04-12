@@ -1,15 +1,10 @@
 import { createAuthClient } from 'better-auth/react'
-import { inferAdditionalFields } from 'better-auth/client/plugins'
-import { SYSTEM_ROLES, deriveDefaultNameFromEmail, getHomePathForRole as getSharedHomePathForRole } from '@repo/contracts'
-import type { SystemRole } from '@repo/contracts'
+import { adminClient, inferAdditionalFields } from 'better-auth/client/plugins'
+import { APP_ROLES, deriveDefaultNameFromEmail, getHomePathForRole as getSharedHomePathForRole, hasAuthRole, parseAuthRoles } from '@repo/contracts'
+import type { AppRole } from '@repo/contracts'
 
 const additionalFields = {
   user: {
-    systemRole: {
-      type: 'string',
-      input: false,
-      required: true,
-    },
     mustChangePassword: {
       type: 'boolean',
       input: false,
@@ -27,26 +22,25 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: 'include',
   },
-  plugins: [inferAdditionalFields(additionalFields)],
+  plugins: [adminClient(), inferAdditionalFields(additionalFields)],
 })
 
 export type AuthSession = typeof authClient.$Infer.Session
 export type AuthSessionUser = AuthSession['user']
 
-export { SYSTEM_ROLES, deriveDefaultNameFromEmail }
-export type { SystemRole }
+export { APP_ROLES, deriveDefaultNameFromEmail, hasAuthRole, parseAuthRoles }
+export type { AppRole }
 
-export const getHomePathForRole = (systemRole: string | null | undefined) =>
-  getSharedHomePathForRole(systemRole === 'SUPERADMIN' ? 'SUPERADMIN' : 'USER')
+export const getHomePathForRole = (role: string | null | undefined) => getSharedHomePathForRole(role)
 
 export const getEntryPathForUser = (
-  user: Pick<AuthSessionUser, 'mustChangePassword' | 'systemRole'> | null | undefined,
+  user: Pick<AuthSessionUser, 'mustChangePassword' | 'role'> | null | undefined,
 ) => {
   if (!user) {
     return '/login'
   }
 
-  return user.mustChangePassword ? '/change-password' : getHomePathForRole(user.systemRole)
+  return user.mustChangePassword ? '/change-password' : getHomePathForRole(user.role)
 }
 
 export const toAbsoluteAppUrl = (pathname: string) => new URL(pathname, window.location.origin).toString()

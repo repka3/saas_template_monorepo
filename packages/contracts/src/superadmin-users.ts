@@ -1,11 +1,9 @@
-import type { SystemRole } from './auth.js'
-
 export interface SuperadminUser {
   id: string
   email: string
   name: string
   emailVerified: boolean
-  systemRole: SystemRole
+  role: string
   banned: boolean
   banReason: string | null
   banExpires: string | null

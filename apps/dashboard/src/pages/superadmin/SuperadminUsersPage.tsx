@@ -21,10 +21,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useCreateSuperadminUserMutation, useSuperadminUsersQuery } from '@/features/superadmin-users/superadmin-users-hooks'
 import { buildVisiblePages, copyText, EMAIL_PATTERN, formatDateTime, generateTemporaryPassword, trimToUndefined } from '@/features/superadmin-users/superadmin-users-utils'
+import { parseAuthRoles } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 
 const DEFAULT_PAGE_SIZE = 20
 const PAGE_SIZE_OPTIONS = ['10', '20', '50']
+
+const formatRoleLabel = (role: string) =>
+  parseAuthRoles(role)
+    .map((value) => value[0]?.toUpperCase() + value.slice(1))
+    .join(', ') || role
 
 const parsePositiveInt = (value: string | null, fallback: number) => {
   const parsed = Number(value)
@@ -125,7 +131,7 @@ export default function SuperadminUsersPage() {
       },
       {
         header: 'Role',
-        cell: ({ row }) => <Badge variant="outline">{row.original.systemRole}</Badge>,
+        cell: ({ row }) => <Badge variant="outline">{formatRoleLabel(row.original.role)}</Badge>,
       },
       {
         header: 'Status',

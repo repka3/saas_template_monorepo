@@ -1,10 +1,10 @@
-import { ERROR_CODES } from '@repo/contracts'
+import { ERROR_CODES, hasAuthRole } from '@repo/contracts'
 
 import type { AuthSessionUser } from '../../lib/auth.js'
 import { HttpError } from '../../lib/http-error.js'
 
 export const assertCanReadUser = (actor: AuthSessionUser, targetUserId: string): void => {
-  if (actor.systemRole === 'SUPERADMIN' || actor.id === targetUserId) {
+  if (hasAuthRole(actor.role, 'superadmin') || actor.id === targetUserId) {
     return
   }
 

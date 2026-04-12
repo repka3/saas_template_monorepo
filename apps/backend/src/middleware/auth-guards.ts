@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from 'express'
-import { ERROR_CODES } from '@repo/contracts'
+import { ERROR_CODES, hasAuthRole } from '@repo/contracts'
 import { fromNodeHeaders } from 'better-auth/node'
 
-import type { SystemRole } from '../lib/auth-schema.js'
+import type { AppRole } from '../lib/auth-schema.js'
 import { auth } from '../lib/auth.js'
 import { HttpError } from '../lib/http-error.js'
 import { type AuthLocals, getAuthContext } from '../utils/auth-utils.js'
@@ -42,13 +42,13 @@ export const requirePasswordChangeNotRequired: AuthenticatedRequestHandler = (_r
   next()
 }
 
-export const requireSystemRole =
-  (requiredRole: SystemRole): AuthenticatedRequestHandler =>
+export const requireRole =
+  (requiredRole: AppRole): AuthenticatedRequestHandler =>
   (_req, res, next) => {
     const authContext = getAuthContext(res)
 
-    if (authContext.user.systemRole !== requiredRole) {
-      const message = requiredRole === 'SUPERADMIN' ? 'Superadmin role required' : 'Required role missing'
+    if (!hasAuthRole(authContext.user.role, requiredRole)) {
+      const message = requiredRole === 'superadmin' ? 'Superadmin role required' : 'Required role missing'
 
       next(new HttpError(403, ERROR_CODES.FORBIDDEN, message))
       return

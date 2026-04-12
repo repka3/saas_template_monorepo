@@ -76,7 +76,6 @@ type MockSession = {
     emailVerified: boolean
     name: string
     image: string | null
-    systemRole: 'USER' | 'SUPERADMIN'
     role: 'user' | 'superadmin'
     banned: boolean
     mustChangePassword: boolean
@@ -102,7 +101,6 @@ const buildSession = (overrides?: Partial<MockSession['user']>): MockSession => 
     emailVerified: true,
     name: 'Test User',
     image: null,
-    systemRole: 'USER',
     role: 'user',
     banned: false,
     mustChangePassword: false,
@@ -115,7 +113,7 @@ const buildDbUser = (overrides?: Record<string, unknown>) => ({
   name: 'Test User',
   email: 'user@example.com',
   emailVerified: true,
-  systemRole: 'USER',
+  role: 'user',
   image: null,
   createdAt: new Date('2026-04-10T12:00:00.000Z'),
   updatedAt: new Date('2026-04-10T12:00:00.000Z'),
@@ -131,7 +129,7 @@ const buildSuperadminUser = (overrides?: Record<string, unknown>) => ({
   email: 'created@example.com',
   name: 'Created User',
   emailVerified: false,
-  systemRole: 'USER',
+  role: 'user',
   banned: false,
   banReason: null,
   banExpires: null,
@@ -261,7 +259,7 @@ describe('GET /api/users/:id', () => {
 
   it('returns 200 when a superadmin requests any user', async () => {
     const dbUser = buildDbUser({ id: 'other-user', name: 'Other User' })
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
     getUserByIdMock.mockResolvedValue(dbUser)
 
     const response = await request(app).get('/api/users/other-user')
@@ -274,7 +272,7 @@ describe('GET /api/users/:id', () => {
   })
 
   it('returns 404 when a superadmin requests a non-existent user', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
     getUserByIdMock.mockResolvedValue(null)
 
     const response = await request(app).get('/api/users/does-not-exist')
@@ -309,7 +307,7 @@ describe('GET /api/superadmin/users/:id', () => {
   })
 
   it('returns admin detail data for superadmins', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
     getSuperadminUserByIdMock.mockResolvedValue(buildSuperadminUser({ banned: true }))
 
     const response = await request(app).get('/api/superadmin/users/user-2')
@@ -347,7 +345,7 @@ describe('GET /api/superadmin/users', () => {
       users: [buildSuperadminUser()],
       pagination: { page: 2, pageSize: 5, totalItems: 1, totalPages: 1 },
     })
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).get('/api/superadmin/users?page=2&pageSize=5&query=%20Ada%20')
 
@@ -381,7 +379,7 @@ describe('POST /api/superadmin/users', () => {
   })
 
   it('validates the temporary password length', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).post('/api/superadmin/users').send({
       email: 'person@example.com',
@@ -395,7 +393,7 @@ describe('POST /api/superadmin/users', () => {
   })
 
   it('creates a user for a superadmin', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).post('/api/superadmin/users').send({
       email: 'person@example.com',
@@ -440,7 +438,7 @@ describe('PATCH /api/superadmin/users/:id', () => {
   })
 
   it('validates disableReason combinations before calling the service', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).patch('/api/superadmin/users/user-2').send({
       disableReason: 'Nope',
@@ -452,7 +450,7 @@ describe('PATCH /api/superadmin/users/:id', () => {
   })
 
   it('updates a user for a superadmin', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).patch('/api/superadmin/users/user-2').send({
       email: 'updated@example.com',
@@ -478,7 +476,7 @@ describe('PATCH /api/superadmin/users/:id', () => {
 
   it('returns 500 when the service throws an unexpected error after partial work', async () => {
     updateSuperadminUserMock.mockRejectedValueOnce(new Error('db write failed'))
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).patch('/api/superadmin/users/user-2').send({
       temporaryPassword: 'temporary-pass',
@@ -522,6 +520,7 @@ describe('PATCH /api/users/me/profile', () => {
         removeAvatar: false,
       },
       avatarFile: undefined,
+      requestHeaders: expect.any(Headers),
     })
     expect(response.body.user).toMatchObject({
       profile: {
@@ -554,6 +553,7 @@ describe('PATCH /api/users/me/profile', () => {
         removeAvatar: false,
       },
       avatarFile: undefined,
+      requestHeaders: expect.any(Headers),
     })
   })
 
@@ -652,6 +652,7 @@ describe('PATCH /api/users/me/profile', () => {
         removeAvatar: true,
       },
       avatarFile: undefined,
+      requestHeaders: expect.any(Headers),
     })
     expect(response.body.user.image).toBeNull()
   })

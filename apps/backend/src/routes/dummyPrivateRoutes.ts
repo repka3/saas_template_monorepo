@@ -1,7 +1,7 @@
 import { Router } from 'express'
 
 import { getDummyPrivate, getDummySuperadmin } from '../controllers/dummyPrivateController.js'
-import { requireAuthenticatedUser, requirePasswordChangeNotRequired, requireSystemRole } from '../middleware/auth-guards.js'
+import { requireAuthenticatedUser, requirePasswordChangeNotRequired, requireRole } from '../middleware/auth-guards.js'
 
 export const dummyPrivateRouter = Router()
 
@@ -9,4 +9,4 @@ const commonMiddleware = [requireAuthenticatedUser, requirePasswordChangeNotRequ
 
 dummyPrivateRouter.get('/dummy-private', ...commonMiddleware, getDummyPrivate)
 
-dummyPrivateRouter.get('/dummy-superadmin', ...commonMiddleware, requireSystemRole('SUPERADMIN'), getDummySuperadmin)
+dummyPrivateRouter.get('/dummy-superadmin', ...commonMiddleware, requireRole('superadmin'), getDummySuperadmin)

@@ -25,8 +25,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useSuperadminUserQuery, useUpdateSuperadminUserMutation } from '@/features/superadmin-users/superadmin-users-hooks'
 import { copyText, EMAIL_PATTERN, formatDateTime, generateTemporaryPassword, trimToNull } from '@/features/superadmin-users/superadmin-users-utils'
+import { parseAuthRoles } from '@/lib/auth-client'
 
 type PendingAction = 'identity' | 'disable' | 'enable' | 'password' | null
+
+const formatRoleLabel = (role: string) =>
+  parseAuthRoles(role)
+    .map((value) => value[0]?.toUpperCase() + value.slice(1))
+    .join(', ') || role
 
 const UserStatusBadges = ({
   emailVerified,
@@ -356,8 +362,8 @@ export default function SuperadminUserDetailPage() {
             <CardContent className="grid gap-4">
               <div className="grid gap-2 text-sm">
                 <div className="flex items-center justify-between rounded-xl border border-foreground/10 px-3 py-2">
-                  <span className="text-muted-foreground">System role</span>
-                  <Badge variant="outline">{user.systemRole}</Badge>
+                  <span className="text-muted-foreground">Role</span>
+                  <Badge variant="outline">{formatRoleLabel(user.role)}</Badge>
                 </div>
                 <div className="flex items-center justify-between rounded-xl border border-foreground/10 px-3 py-2">
                   <span className="text-muted-foreground">Current access</span>

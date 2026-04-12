@@ -3,22 +3,6 @@ import { env } from './lib/env.js'
 import { logger } from './lib/logger.js'
 import { prisma } from './lib/prisma.js'
 
-const assertStartupReadiness = async () => {
-  const superadmin = await prisma.user.findFirst({
-    where: {
-      systemRole: 'SUPERADMIN',
-      banned: false,
-    },
-    select: {
-      id: true,
-    },
-  })
-
-  if (!superadmin) {
-    throw new Error('Backend startup aborted: no non-banned superadmin user found. Run the superadmin seed before starting the server.')
-  }
-}
-
 const shutdown = (server: ReturnType<typeof app.listen>, signal: string) => {
   logger.info({ signal }, 'shutting down backend')
 
@@ -40,8 +24,6 @@ const shutdown = (server: ReturnType<typeof app.listen>, signal: string) => {
 }
 
 const startServer = async () => {
-  await assertStartupReadiness()
-
   const server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT }, 'backend listening')
   })

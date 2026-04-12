@@ -11,9 +11,6 @@ import { prisma } from './prisma.js'
 
 type AuthHookContext = {
   path: string
-  body?: {
-    email?: unknown
-  }
   context: {
     returned?: unknown
     session?: {
@@ -26,26 +23,22 @@ type AuthHookContext = {
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
-export const blockBannedUserBeforeSignIn = async (context: AuthHookContext) => {
-  if (context.path !== '/sign-in/email') {
+const bootstrapAdminUserIds = (env.BETTER_AUTH_BOOTSTRAP_ADMIN_USER_IDS ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter((value) => value.length > 0)
+
+export const blockPublicSignUpAfterBootstrap = async (context: AuthHookContext) => {
+  if (context.path !== '/sign-up/email') {
     return
   }
 
-  const email = typeof context.body?.email === 'string' ? context.body.email.trim().toLowerCase() : ''
+  const existingUsers = await prisma.user.count()
 
-  if (!email) {
-    return
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { banned: true },
-  })
-
-  if (user?.banned) {
+  if (existingUsers > 0) {
     throw APIError.from('FORBIDDEN', {
-      code: 'BANNED_USER',
-      message: 'Your account is disabled.',
+      code: 'SIGN_UP_DISABLED',
+      message: 'Public sign-up is disabled.',
     })
   }
 }
@@ -92,7 +85,8 @@ export const auth = betterAuth({
   plugins: [
     adminPlugin({
       defaultRole: 'user',
-      adminRoles: ['superadmin'],
+      adminUserIds: bootstrapAdminUserIds,
+      bannedUserMessage: 'Your account is disabled.',
       roles: {
         user: userAc,
         superadmin: adminAc,
@@ -110,7 +104,6 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
     sendVerificationEmail: async ({ token, user }) => {
       const verificationUrl = new URL('/verify-email', env.CORS_ORIGIN)
       verificationUrl.searchParams.set('token', token)
@@ -130,7 +123,7 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    before: createAuthMiddleware(blockBannedUserBeforeSignIn),
+    before: createAuthMiddleware(blockPublicSignUpAfterBootstrap),
     after: createAuthMiddleware(clearMustChangePasswordAfterPasswordChange),
   },
   database: prismaAdapter(prisma, {

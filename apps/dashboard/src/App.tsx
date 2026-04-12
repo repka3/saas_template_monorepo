@@ -16,7 +16,7 @@ import SuperadminUsersPage from '@/pages/superadmin/SuperadminUsersPage'
 import ChangePasswordPage from '@/pages/shared/ChangePasswordPage'
 import HomeUser from '@/pages/user/HomeUser'
 import ProfilePage from '@/pages/shared/ProfilePage'
-import { authClient, deriveDefaultNameFromEmail, getEntryPathForUser, toAbsoluteAppUrl, type AuthSessionUser } from '@/lib/auth-client'
+import { authClient, getEntryPathForUser, hasAuthRole, toAbsoluteAppUrl, type AppRole } from '@/lib/auth-client'
 import { useAuth } from '@/hooks/use-auth'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -28,7 +28,7 @@ function App() {
 
       <Route element={<GuestOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register" element={<RegistrationDisabledPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
@@ -46,7 +46,7 @@ function App() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute allowedRole="USER">
+          <ProtectedRoute allowedRole="user">
             <UserLayout />
           </ProtectedRoute>
         }
@@ -57,7 +57,7 @@ function App() {
       <Route
         path="/superadmin"
         element={
-          <ProtectedRoute allowedRole="SUPERADMIN">
+          <ProtectedRoute allowedRole="superadmin">
             <SuperAdminLayout />
           </ProtectedRoute>
         }
@@ -111,7 +111,7 @@ function AuthenticatedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-function ProtectedRoute({ allowedRole, children }: { allowedRole: AuthSessionUser['systemRole']; children: ReactNode }) {
+function ProtectedRoute({ allowedRole, children }: { allowedRole: AppRole; children: ReactNode }) {
   const { homePath, isPending, user } = useAuth()
 
   if (isPending) {
@@ -126,7 +126,7 @@ function ProtectedRoute({ allowedRole, children }: { allowedRole: AuthSessionUse
     return <Navigate to="/change-password" replace />
   }
 
-  if (user.systemRole !== allowedRole) {
+  if (!hasAuthRole(user.role, allowedRole)) {
     return <Navigate to={homePath} replace />
   }
 
@@ -183,7 +183,7 @@ function LoginPage() {
       description="Use your email and password to continue into the reusable auth shell."
       alternateAction={{
         href: '/register',
-        label: 'Create an account',
+        label: 'Access policy',
       }}
     >
       <AuthFeedback error={error} />
@@ -205,76 +205,22 @@ function LoginPage() {
   )
 }
 
-function RegisterPage() {
-  const navigate = useNavigate()
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setError(null)
-
-    const formData = new FormData(event.currentTarget)
-    const email = String(formData.get('email') || '')
-      .trim()
-      .toLowerCase()
-    const password = String(formData.get('password') || '')
-    const confirmPassword = String(formData.get('confirmPassword') || '')
-
-    if (!EMAIL_PATTERN.test(email)) {
-      setError('Enter a valid email address.')
-      return
-    }
-
-    if (password.length < 8) {
-      setError('Use at least 8 characters for the password.')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.')
-      return
-    }
-
-    setIsSubmitting(true)
-
-    const result = await authClient.signUp.email({
-      email,
-      password,
-      name: deriveDefaultNameFromEmail(email),
-      callbackURL: toAbsoluteAppUrl('/'),
-    })
-
-    setIsSubmitting(false)
-
-    if (result.error) {
-      setError(result.error.message || 'Unable to create the account.')
-      return
-    }
-
-    navigate(getEntryPathForUser(result.data.user), { replace: true })
-  }
-
+function RegistrationDisabledPage() {
   return (
     <AuthRouteLayout
-      eyebrow="Public Signup"
-      title="Create account"
-      description="Registration is intentionally email-and-password only. New accounts always start as standard users."
+      eyebrow="Admin Provisioning"
+      title="Registration disabled"
+      description="Accounts are created by a superadmin in this phase. Use the bootstrap flow for the first superadmin, then let admins provision everyone else."
       alternateAction={{
         href: '/login',
-        label: 'Already have an account?',
+        label: 'Back to login',
       }}
     >
-      <AuthFeedback error={error} />
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <Input autoComplete="email" name="email" placeholder="Email address" type="email" />
-        <Input autoComplete="new-password" name="password" placeholder="Password" type="password" />
-        <Input autoComplete="new-password" name="confirmPassword" placeholder="Confirm password" type="password" />
-        <Button className="w-full justify-between" disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Creating account' : 'Create account'}
-          {isSubmitting ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
-        </Button>
-      </form>
+      <Alert>
+        <TriangleAlert />
+        <AlertTitle>Public sign-up is off</AlertTitle>
+        <AlertDescription>Ask an administrator to create your account, or follow the backend bootstrap steps if this is a fresh environment.</AlertDescription>
+      </Alert>
     </AuthRouteLayout>
   )
 }

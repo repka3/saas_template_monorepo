@@ -48,7 +48,6 @@ type MockSession = {
     emailVerified: boolean
     name: string
     image: string | null
-    systemRole: 'USER' | 'SUPERADMIN'
     role: 'user' | 'superadmin'
     banned: boolean
     mustChangePassword: boolean
@@ -74,7 +73,6 @@ const buildSession = (overrides?: Partial<MockSession['user']>): MockSession => 
     emailVerified: true,
     name: 'Test User',
     image: null,
-    systemRole: 'USER',
     role: 'user',
     banned: false,
     mustChangePassword: false,
@@ -131,7 +129,7 @@ describe('dummy private routes', () => {
   })
 
   it('rejects GET /api/dummy-superadmin for an authenticated user without the role', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'USER' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'user' }))
 
     const response = await request(app).get('/api/dummy-superadmin')
 
@@ -146,7 +144,7 @@ describe('dummy private routes', () => {
   })
 
   it('allows GET /api/dummy-superadmin for an authenticated superadmin', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN' }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
     const response = await request(app).get('/api/dummy-superadmin')
 
@@ -173,7 +171,7 @@ describe('dummy private routes', () => {
   })
 
   it('rejects GET /api/dummy-superadmin for a banned authenticated superadmin', async () => {
-    getSessionMock.mockResolvedValue(buildSession({ systemRole: 'SUPERADMIN', role: 'superadmin', banned: true }))
+    getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin', banned: true }))
 
     const response = await request(app).get('/api/dummy-superadmin')
 

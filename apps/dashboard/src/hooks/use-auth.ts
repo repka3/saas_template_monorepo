@@ -8,7 +8,7 @@ export const useAuth = () => {
     ...sessionState,
     user,
     isAuthenticated: Boolean(user),
-    homePath: user ? getHomePathForRole(user.systemRole) : '/login',
+    homePath: user ? getHomePathForRole(user.role) : '/login',
     entryPath: getEntryPathForUser(user),
   }
 }

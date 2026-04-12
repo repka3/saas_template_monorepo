@@ -11,8 +11,7 @@
     "check-types": "pnpm prisma:generate && tsc --noEmit -p tsconfig.json",
     "prisma:generate": "prisma generate --config prisma.config.ts",
     "prisma:migrate": "prisma migrate dev --config prisma.config.ts",
-    "prisma:studio": "prisma studio --config prisma.config.ts",
-    "seed:superadmin": "tsx src/scripts/seed-superadmin.ts"
+    "prisma:studio": "prisma studio --config prisma.config.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

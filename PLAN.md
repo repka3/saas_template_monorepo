@@ -1,270 +1,258 @@
-# Better Auth Alignment Plan
+# Better Auth Final Plan
 
 Checked against official Better Auth documentation on 2026-04-12.
 
-## Goal
-
-Align the superadmin user-management implementation with Better Auth's documented model so that:
-
-- Better Auth is the source of truth for auth-user lifecycle operations.
-- Better Auth's documented admin roles and admin APIs are used for user management.
-- Direct writes to Better Auth-managed auth records are removed or isolated to a clearly documented bootstrap exception.
-- Custom app data remains custom, but is integrated in a way that does not fight Better Auth.
-
-## Official Documentation Baseline
-
-These are the live docs this plan is based on:
+## Canonical Documentation
 
 - Admin plugin: https://better-auth.com/docs/plugins/admin
 - Options reference: https://better-auth.com/docs/reference/options
-- Client concepts: https://better-auth.com/docs/concepts/client
+- User and accounts: https://better-auth.com/docs/concepts/users-accounts
+- Email flows: https://better-auth.com/docs/concepts/email
+- Database hooks: https://better-auth.com/docs/concepts/database
 
-Key documented points that drive this plan:
+## Non-Negotiable Decisions
 
-- Better Auth's admin plugin is the documented surface for creating users, updating users, setting roles, setting passwords, banning users, unbanning users, and revoking sessions.
-- Admin operations require an authenticated admin account, or a user included in `adminUserIds`.
-- The admin plugin's role system is the documented authorization model for admin capabilities.
-- `user.additionalFields` is the documented place for app-specific user fields.
-- `databaseHooks` is the documented place for lifecycle work tied to core user/account/session/verification writes.
-- `hooks.before` and `hooks.after` are request lifecycle hooks, not a general replacement for user data synchronization.
-- `emailVerification.sendOnSignUp` and `emailAndPassword.requireEmailVerification` are separate choices and must be decided deliberately.
-- `baseURL` should be explicitly set, and `trustedOrigins` must handle the `request === undefined` case for direct `auth.api` calls if using a dynamic function.
+- Better Auth is the source of truth for auth, identity, roles, bans, passwords, sessions, and user lifecycle.
+- `systemRole` is deleted everywhere. No compatibility layer. No sync layer. No fallback.
+- We do not preserve the current auth schema just because it already exists. The database can be reset.
+- No direct Prisma writes to Better Auth-managed auth records in normal operation.
+- The bootstrap path must use documented Better Auth mechanisms, not raw writes to `user` or `account`.
+- The app stops inventing parallel auth concepts when Better Auth already has the concept.
 
-## Current Repo Gaps Relative to the Docs
+## Final Target State
 
-These are the main places where the repo currently diverges from the documented Better Auth model:
+The auth model is:
 
-- `apps/backend/src/scripts/seed-superadmin.ts` writes directly to Better Auth-managed `user` and `account` rows, including the credential password hash.
-- `apps/backend/src/services/userServices.ts` mixes Better Auth admin API calls with direct Prisma writes to auth-managed user fields.
-- The app currently has two authorization sources of truth for privilege checks:
-  - Better Auth `role`
-  - app-specific `systemRole`
-- `apps/backend/src/middleware/auth-guards.ts` and `apps/dashboard/src/App.tsx` gate access with `systemRole`, while Better Auth admin authorization is based on `role`.
-- Banned-user handling is partially duplicated in a custom sign-in hook instead of relying on the admin plugin's documented ban behavior and messaging options.
-- The forced-password-change flow uses a custom additional field correctly, but its lifecycle is managed partly through request hooks and partly through manual Prisma writes.
+- Better Auth `role` is the only authorization role field.
+- `role` values are `user` and `superadmin`.
+- `mustChangePassword` remains as a Better Auth `user.additionalFields` field because it is app-specific and tied to onboarding policy.
+- Better Auth core fields handle identity:
+  - `email`
+  - `name`
+  - `image`
+  - `emailVerified`
+  - `role`
+  - `banned`
+  - `banReason`
+  - `banExpires`
+- The app does not keep a second auth-facing role field.
+- The app does not keep custom ban enforcement when the admin plugin already enforces bans.
+- The app uses Better Auth request hooks only where the behavior is truly request-specific.
 
-## Target State
+## Scope Decisions
 
-The preferred end state is:
+This plan is not a migration plan. It is a replacement plan.
 
-- Better Auth `role` becomes the single privilege source for `user` vs `superadmin`.
-- `systemRole` is removed from auth and routing logic.
-- If `systemRole` must remain temporarily for migration safety, it becomes transitional and derived, not independently authoritative.
-- All auth-user mutations go through documented Better Auth APIs or documented Better Auth lifecycle hooks.
-- App-specific profile data stays outside Better Auth core tables and is managed separately.
-- Bootstrap provisioning is documented explicitly as either:
-  - a Better Auth-compatible admin bootstrap flow, or
-  - a one-time exception with hard boundaries and no ongoing operational dependence.
+- Existing auth data can be discarded.
+- Old auth migrations that exist only to support the mixed model can be removed or replaced.
+- Tests, contracts, frontend types, routes, and backend services should be updated directly to the final model.
 
-## Workstream 1: Freeze the Documentation Baseline
+## Product Policy for This Phase
 
-- Add a short internal doc section in `README.md` or `docs/auth.md` listing the Better Auth pages above as the canonical references.
-- Note the exact repo assumptions this plan uses:
-  - admin plugin stays enabled
-  - Prisma adapter stays in use
-  - email/password stays enabled
-  - superadmin remains a Better Auth admin role
-- Add a rule for future work: no direct writes to Better Auth-managed auth fields unless the docs explicitly require it or a bootstrap exception is documented.
+For this phase we use a simple Better Auth-native onboarding model:
 
-Acceptance criteria:
+- onboarding is admin-driven
+- public self-sign-up is disabled after bootstrap
+- email verification is not required for sign-in in this phase
+- admin-created users receive a temporary password
+- admin-created users must change their password on first successful login
 
-- The repo has one place that names the official Better Auth pages as the source of truth for auth implementation decisions.
+This keeps the implementation aligned with Better Auth and removes unnecessary early-stage complexity.
 
-## Workstream 2: Consolidate Authorization Around Better Auth `role`
+If the product later decides to require verified email before sign-in:
 
-Preferred direction:
+- enable `emailAndPassword.requireEmailVerification`
+- add `customSyntheticUser` before turning it on
+- implement the verification flow for admin-created users explicitly
 
-- Replace `systemRole`-based access checks with Better Auth `role` checks for `user` and `superadmin`.
-- Keep `mustChangePassword` as an additional field because it is app-specific and documented additional fields are the right place for it.
+That is future work, not part of this plan.
 
-Implementation steps:
+## Final Architecture
 
-- Audit every use of `systemRole` in backend middleware, dashboard route guards, redirects, contracts, and tests.
-- Introduce a single auth-role helper that maps Better Auth role strings to app route decisions.
-- Migrate route guards from `systemRole === 'SUPERADMIN'` to Better Auth `role` semantics.
-- Remove `systemRole` from session-dependent UI logic after the migration is complete.
-- Remove `systemRole` from the Prisma schema and contracts only after all call sites are migrated.
+### 1. Auth Config
 
-Fallback path if removal is temporarily too disruptive:
+`apps/backend/src/lib/auth.ts` will be rewritten to follow the Better Auth model cleanly:
 
-- Keep `systemRole` only as a compatibility field for one migration cycle.
-- Make `role` the authority.
-- Synchronize `systemRole` from `role` in one direction only, then delete it in a follow-up.
+- Keep explicit `baseURL`.
+- Keep static `trustedOrigins`.
+- Keep `emailAndPassword.enabled = true`.
+- Remove `sendOnSignUp` because public sign-up is not the operating model for this phase.
+- Remove the custom banned-user pre-sign-in hook.
+- Set `bannedUserMessage` in the admin plugin config.
+- Keep the request after-hook that clears `mustChangePassword` after a successful `/change-password`.
+- Do not move that password-change cleanup to a database hook.
 
-Acceptance criteria:
+### 2. Roles and Access Control
 
-- There is one privilege source of truth.
-- A user cannot be a Better Auth admin while the app considers them non-admin, or the reverse.
+Use Better Auth admin access control directly:
 
-## Workstream 3: Move User Management Fully Onto Better Auth Admin APIs
+- Define Better Auth roles for `user` and `superadmin`.
+- Make `superadmin` the full admin role using Better Auth admin access control.
+- Remove `adminRoles` if custom access control is used.
+- Pass the same Better Auth access control config to the client admin plugin when client-side permission checks are needed.
+- Treat `role` as potentially multi-valued and centralize role parsing in one helper.
 
-Use the documented admin endpoints as the canonical mutation layer:
+### 3. User Data Model
 
-- `createUser`
-- `listUsers`
-- `getUser`
-- `setRole`
-- `setUserPassword`
-- `adminUpdateUser`
-- `banUser`
-- `unbanUser`
-- session revoke/list endpoints if needed
+Use Better Auth fields for auth-owned identity data:
 
-Implementation steps:
+- self-service updates for `name` and `image` go through Better Auth `updateUser`
+- admin updates for user identity go through `adminUpdateUser`
+- password changes go through Better Auth password endpoints
+- role changes go through `setRole`
+- bans go through `banUser` and `unbanUser`
+- session invalidation goes through Better Auth revoke-session endpoints
 
-- Refactor `apps/backend/src/services/userServices.ts` so auth-managed fields are mutated only through Better Auth admin APIs.
-- Stop writing auth-managed fields directly through Prisma in service methods.
-- Keep Prisma reads only where needed for app-specific joins such as `profile`.
-- For user creation:
-  - create the auth user through Better Auth
-  - attach app profile data in a separate step
-  - make the failure behavior explicit and test it
-- For user updates:
-  - apply Better Auth changes first
-  - apply profile changes second
-  - make partial-failure handling explicit
-- Decide whether the custom backend superadmin endpoints should remain:
-  - keep them only if they add real app-specific value
-  - otherwise prefer the documented Better Auth client plugin for dashboard admin screens
+App-specific auth-adjacent state is limited to:
 
-Acceptance criteria:
+- `mustChangePassword`
 
-- No service method directly mutates Better Auth-managed auth fields through Prisma.
-- Tests cover Better Auth API failures and cross-boundary partial failure cases.
+We do not keep `systemRole`.
 
-## Workstream 4: Use `databaseHooks` for Better Auth Lifecycle Synchronization
+## Required Code Changes
 
-The repo currently uses request hooks for some auth-related state transitions. Keep request hooks only for true request-level behavior. Use `databaseHooks` where the concern is tied to user lifecycle persistence.
+### Workstream 1: Reset the Schema to the Better Auth Model
 
-Implementation steps:
-
-- Review whether `mustChangePassword` clearing belongs in a request hook or in a documented Better Auth lifecycle callback.
-- If a profile row should always exist for every auth user, create it from a `databaseHooks.user.create.after` flow instead of scattering profile creation logic.
-- If any transitional role-to-systemRole sync remains, do it in one documented hook location, not in multiple services or scripts.
+- Drop the current mixed auth schema and rebuild it for the final model.
+- Remove `systemRole` from the Prisma schema and generated types.
+- Remove any auth migration that exists only to support `systemRole` or the mixed old model.
+- Remove the current superadmin seed strategy that writes directly to Better Auth tables.
+- Regenerate Better Auth schema artifacts after plugin/config cleanup.
 
 Acceptance criteria:
 
-- User lifecycle synchronization logic lives in one documented Better Auth extension point.
+- No auth table contains `systemRole`.
+- No bootstrap code writes password hashes or account rows directly.
+
+### Workstream 2: Rewrite Better Auth Configuration
+
+- In `authUserAdditionalFields`, keep only `mustChangePassword`.
+- Remove `systemRole` from Better Auth additional fields.
+- Replace the current admin plugin config with one clean Better Auth role model.
+- Remove `blockBannedUserBeforeSignIn`.
+- Configure `bannedUserMessage: 'Your account is disabled.'`.
+- Keep `clearMustChangePasswordAfterPasswordChange` as the request after-hook for `/change-password`.
+
+Acceptance criteria:
+
+- The auth config contains one role model and one ban enforcement path.
+- The only custom auth user field left for this phase is `mustChangePassword`.
+
+### Workstream 3: Remove Mixed Prisma Auth Mutations
+
+- Refactor backend services so Better Auth-managed fields are never mutated with Prisma.
+- Replace self-service `user.image` writes with Better Auth `updateUser`.
+- Replace self-service `user.name` writes with Better Auth `updateUser` if that flow exists in the current app.
+- Keep Prisma out of `user`, `account`, and `session` mutations unless Better Auth itself is calling through the adapter.
+- After admin `setUserPassword`, explicitly call `revokeUserSessions` for that target user.
+- Keep any non-auth app data write separate and second, after the Better Auth operation succeeds.
+
+Acceptance criteria:
+
+- No normal service code directly mutates Better Auth-managed auth fields through Prisma.
+- Admin password reset revokes active sessions for the target user.
+
+### Workstream 4: Delete `systemRole` Across the Stack
+
+- Remove `systemRole` from backend middleware.
+- Remove `systemRole` from frontend route guards.
+- Remove `systemRole` from contracts, DTOs, tests, and helper functions.
+- Replace all route decisions with Better Auth `role`.
+- Replace all privilege checks with Better Auth role or Better Auth permission checks.
+
+Acceptance criteria:
+
+- No route, API, contract, or test references `systemRole`.
+- A user’s Better Auth `role` is the only role used by the app.
+
+### Workstream 5: Simplify the Frontend to Better Auth
+
+- Remove `inferAdditionalFields` usage for `systemRole`.
+- Keep additional-field inference only for `mustChangePassword` if still needed on the client.
+- Add the Better Auth admin client plugin if the dashboard directly uses admin actions or permission checks.
+- Update route guards to use `user.role`.
+- Remove or disable the register page and public registration route for this phase.
+
+Acceptance criteria:
+
+- The frontend consumes Better Auth session data directly.
+- The frontend does not depend on app-defined auth role fields.
+
+### Workstream 6: Replace Bootstrap with a Better Auth Bootstrap
+
+Delete `apps/backend/src/scripts/seed-superadmin.ts`.
+
+Bootstrap the first superadmin with documented Better Auth behavior:
+
+1. Start from an empty database.
+2. Create the first user through Better Auth sign-up.
+3. Temporarily include that user’s id in `adminUserIds`.
+4. Sign in as that user and promote the account with Better Auth `setRole` to `superadmin`.
+5. Remove the temporary bootstrap `adminUserIds` entry.
+6. Disable public sign-up for normal operation.
+
+This is the only bootstrap story for this phase.
+
+Acceptance criteria:
+
+- No bootstrap step writes raw Better Auth user or account records.
+- The first superadmin is created and promoted through Better Auth flows.
+
+### Workstream 7: Keep Only the Right Hook
+
+Keep:
+
+- request after-hook for clearing `mustChangePassword` after successful `/change-password`
+
+Remove:
+
+- request hook that manually blocks banned users before sign-in
+
+Do not introduce a database hook for password-change cleanup.
+
+Acceptance criteria:
+
 - Request hooks are used only for request-scoped behavior.
+- There is no duplicate ban logic.
 
-## Workstream 5: Replace the Current Superadmin Seed Strategy
+### Workstream 8: Update Tests to the Final Model
 
-This is the biggest alignment issue.
+Rewrite tests around Better Auth behavior:
 
-Documented constraint from Better Auth:
-
-- Admin operations require an authenticated admin or a user in `adminUserIds`.
-
-Implication:
-
-- Better Auth does not present the admin endpoints as an unauthenticated bootstrap mechanism.
-
-Plan:
-
-- Remove the current ongoing operational dependence on direct writes to `user` and `account`.
-- Choose and document one bootstrap strategy.
-
-Preferred bootstrap strategies to evaluate:
-
-1. One-time sign-up + promotion path
-- Create the first user through a normal Better Auth flow.
-- Promote that user to admin through a controlled bootstrap path.
-- Use documented admin roles and, if needed, documented `adminUserIds` during bootstrap only.
-
-2. Explicit bootstrap exception
-- Keep a one-time provisioning script only for initial environment setup.
-- Document clearly that it is not part of normal user-management operations.
-- Limit it to creating the initial admin identity and stop using direct writes after bootstrap.
-
-Hard rule:
-
-- The seed script must stop being the normal mechanism for syncing passwords, banning state, or long-term admin demotion logic.
-
-Acceptance criteria:
-
-- There is a documented bootstrap story.
-- Direct writes to Better Auth-managed credential data are either gone or isolated to a clearly declared one-time exception.
-
-## Workstream 6: Decide the Email Verification Policy Explicitly
-
-The docs distinguish:
-
-- sending verification emails
-- requiring email verification before session creation
-
-Implementation steps:
-
-- Decide whether superadmin-created users should be able to sign in before verifying their email.
-- If verification is required, enable `emailAndPassword.requireEmailVerification` and align the superadmin create flow with that policy.
-- If verification is not required, document that the product intentionally allows login with a temporary password before email verification.
-- Ensure the create-user UI labels match the actual Better Auth behavior.
-
-Acceptance criteria:
-
-- The sign-in policy for unverified users is explicit and matches Better Auth config.
-
-## Workstream 7: Remove Duplicate Ban Logic Unless It Adds Proven Value
-
-The admin plugin already documents ban behavior and ban messaging.
-
-Implementation steps:
-
-- Re-evaluate the custom banned-user sign-in hook in `apps/backend/src/lib/auth.ts`.
-- If Better Auth's built-in ban behavior satisfies the UX requirement, remove the duplicate hook and use documented plugin configuration.
-- If a custom message is still required, prefer the documented plugin option for banned-user messaging over a duplicate pre-sign-in query.
-
-Acceptance criteria:
-
-- Ban enforcement has one clear implementation path.
-
-## Workstream 8: Tighten the Client Alignment
-
-Implementation steps:
-
-- Review whether the dashboard should use the Better Auth admin client plugin directly for admin operations that map 1:1 to documented endpoints.
-- If backend wrapper endpoints remain, document why each one exists.
-- Keep `createAuthClient` base URL handling aligned with the documented client setup.
-- Keep client additional-field inference only for fields that truly remain as additional fields.
-
-Acceptance criteria:
-
-- The client uses documented Better Auth patterns with minimal custom indirection.
-
-## Workstream 9: Testing and Verification
-
-Add or update tests for:
-
-- role-based access using Better Auth `role` as the authority
-- bootstrap admin creation path
-- create user through Better Auth plus profile creation failure handling
-- password reset by superadmin plus `mustChangePassword` lifecycle
+- bootstrap first-superadmin flow
+- admin create user
+- admin update user
+- admin set password plus forced password change plus session revocation
 - ban and unban behavior
-- email verification behavior based on the chosen policy
-- session behavior after password changes and bans
+- role-based routing using `role`
+- self-service `updateUser` for identity fields
+- forced password-change redirect behavior
+
+Delete tests that assert the old `systemRole` model.
 
 Acceptance criteria:
 
-- The test suite proves the app's auth behavior through Better Auth's documented flows, not through raw Prisma assumptions.
+- The test suite describes Better Auth behavior, not the old mixed model.
 
-## Suggested Execution Order
+## Implementation Order
 
-1. Freeze the documentation baseline.
-2. Decide whether `systemRole` will be removed immediately or kept for one migration cycle.
-3. Refactor authorization to Better Auth `role`.
-4. Refactor service-layer mutations to Better Auth admin APIs only.
-5. Move lifecycle synchronization into `databaseHooks` where appropriate.
-6. Replace the current seed strategy with a documented bootstrap story.
-7. Resolve email verification policy.
-8. Remove duplicate ban logic if unnecessary.
-9. Update tests and repo docs.
+1. Drop the old auth schema assumptions.
+2. Rewrite Better Auth config.
+3. Delete `systemRole` from backend, frontend, contracts, and tests.
+4. Remove direct Prisma auth mutations.
+5. Replace the seed script with the Better Auth bootstrap flow.
+6. Disable public sign-up for normal operation.
+7. Rewrite tests around the final Better Auth model.
 
-## Done Definition
+## Done Means
 
-This plan is complete when all of the following are true:
+This plan is complete when:
 
-- Superadmin privilege is defined by Better Auth's documented role model.
-- Normal user-management operations do not write directly to Better Auth-managed auth records through Prisma.
-- Additional fields are limited to truly app-specific user state.
-- Bootstrap behavior is documented and tightly scoped.
-- The dashboard and backend both reflect the same Better Auth-backed authorization model.
-- The repo docs point future contributors to the official Better Auth documentation used here.
+- `systemRole` no longer exists
+- the seed script no longer exists
+- the ban hook no longer exists
+- route guards use Better Auth `role`
+- self-service identity updates use Better Auth `updateUser`
+- admin user management uses Better Auth admin APIs only
+- admin password reset revokes user sessions
+- the app can be started from an empty database and bootstrap its first `superadmin` without raw auth table writes

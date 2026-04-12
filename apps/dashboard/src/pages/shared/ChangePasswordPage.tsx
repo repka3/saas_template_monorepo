@@ -79,7 +79,7 @@ export default function ChangePasswordPage() {
     }
 
     toast.success('Password updated')
-    navigate(getHomePathForRole(nextUser.systemRole), { replace: true })
+    navigate(getHomePathForRole(nextUser.role), { replace: true })
   }
 
   return (

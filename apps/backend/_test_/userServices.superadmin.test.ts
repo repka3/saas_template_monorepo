@@ -36,6 +36,7 @@ const authMock = {
     createUser: vi.fn(),
     adminUpdateUser: vi.fn(),
     setUserPassword: vi.fn(),
+    revokeUserSessions: vi.fn(),
     banUser: vi.fn(),
     unbanUser: vi.fn(),
   },
@@ -65,7 +66,6 @@ const buildUserRecord = (overrides?: Record<string, unknown>) => ({
   email: 'created@example.com',
   name: 'Created User',
   emailVerified: false,
-  systemRole: 'USER',
   role: 'user',
   banned: false,
   banReason: null,
@@ -94,7 +94,6 @@ beforeEach(() => {
           upsert: prismaMock.profile.upsert,
         },
         user: {
-          update: vi.fn().mockResolvedValue(undefined),
           findUniqueOrThrow: vi.fn().mockResolvedValue(buildUserRecord()),
         },
       })
@@ -116,6 +115,8 @@ beforeEach(() => {
   authMock.api.adminUpdateUser.mockResolvedValue(buildUserRecord())
   authMock.api.setUserPassword.mockReset()
   authMock.api.setUserPassword.mockResolvedValue({ status: true })
+  authMock.api.revokeUserSessions.mockReset()
+  authMock.api.revokeUserSessions.mockResolvedValue({ status: true })
   authMock.api.banUser.mockReset()
   authMock.api.banUser.mockResolvedValue({ user: buildUserRecord({ banned: true, banReason: 'Terms breach' }) })
   authMock.api.unbanUser.mockReset()
@@ -186,8 +187,6 @@ describe('createSuperadminUser', () => {
         name: 'Created User',
         role: 'user',
         data: {
-          emailVerified: false,
-          systemRole: 'USER',
           mustChangePassword: true,
         },
       },
@@ -238,7 +237,6 @@ describe('createSuperadminUser', () => {
 describe('updateSuperadminUser', () => {
   it('resets emailVerified on email change, updates password state, and upserts profile', async () => {
     const txProfileUpsert = vi.fn().mockResolvedValue(undefined)
-    const txUserUpdate = vi.fn().mockResolvedValue(undefined)
     const txUserFindUniqueOrThrow = vi.fn().mockResolvedValue(buildUserRecord({ email: 'updated@example.com', profile: { firstName: 'Ada', lastName: 'User' } }))
 
     prismaMock.$transaction.mockImplementationOnce(async (input: unknown) => {
@@ -251,7 +249,6 @@ describe('updateSuperadminUser', () => {
           upsert: txProfileUpsert,
         },
         user: {
-          update: txUserUpdate,
           findUniqueOrThrow: txUserFindUniqueOrThrow,
         },
       })
@@ -288,13 +285,23 @@ describe('updateSuperadminUser', () => {
       },
       headers: expect.any(Headers),
     })
-    expect(txProfileUpsert).toHaveBeenCalled()
-    expect(txUserUpdate).toHaveBeenCalledWith({
-      where: { id: 'user-2' },
-      data: {
-        mustChangePassword: true,
+    expect(authMock.api.revokeUserSessions).toHaveBeenCalledWith({
+      body: {
+        userId: 'user-2',
       },
+      headers: expect.any(Headers),
     })
+    expect(authMock.api.adminUpdateUser).toHaveBeenNthCalledWith(2, {
+      body: {
+        userId: 'user-2',
+        data: {
+          mustChangePassword: true,
+        },
+      },
+      headers: expect.any(Headers),
+    })
+    expect(txProfileUpsert).toHaveBeenCalled()
+    expect(txUserFindUniqueOrThrow).toHaveBeenCalled()
     expect(user.email).toBe('updated@example.com')
   })
 

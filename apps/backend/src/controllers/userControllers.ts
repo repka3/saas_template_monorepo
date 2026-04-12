@@ -73,6 +73,7 @@ export const patchMyProfileController: RequestHandler<never, { user: unknown }, 
   const user = await updateMyProfile(actorUserId, {
     input: req.body,
     avatarFile: req.file,
+    requestHeaders: fromNodeHeaders(req.headers),
   })
 
   res.status(200).json({ user })

@@ -12,7 +12,7 @@ export interface UserResponse {
     image: string | null
     createdAt: string
     updatedAt: string
-    systemRole: 'USER' | 'SUPERADMIN'
+    role: string
     profile: UserProfile | null
   }
 }
