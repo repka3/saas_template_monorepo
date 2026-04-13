@@ -39,4 +39,4 @@ jobs:
         run: pnpm --filter dashboard test
 
       - name: Build
-        run: pnpm build
+        run: pnpm --filter backend --filter dashboard build
