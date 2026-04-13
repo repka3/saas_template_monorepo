@@ -21,10 +21,8 @@ export const getPublicAuthConfig: RequestHandler<never, GetPublicAuthConfigRespo
   })
 }
 
-export const testErrorController: RequestHandler = (_req, _res, next) => {
-  next(
-    new HttpError(500, DOMAIN_ERROR_CODES.TEST_ERROR, 'This is a test error meant to be handled by the frontend, depending on the page or situation.', {
-      additionalInfo: 'This is a dummy error with additional structured information. It is mainly useful for verifying frontend error handling.',
-    }),
-  )
+export const testErrorController: RequestHandler = () => {
+  throw new HttpError(500, DOMAIN_ERROR_CODES.TEST_ERROR, 'This is a test error meant to be handled by the frontend, depending on the page or situation.', {
+    additionalInfo: 'This is a dummy error with additional structured information. It is mainly useful for verifying frontend error handling.',
+  })
 }

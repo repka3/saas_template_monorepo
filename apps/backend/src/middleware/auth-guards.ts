@@ -11,32 +11,27 @@ type AuthenticatedResponse = Response<unknown, AuthLocals>
 type AuthenticatedRequestHandler = (req: Request, res: AuthenticatedResponse, next: NextFunction) => void | Promise<void>
 
 export const requireAuthenticatedUser: AuthenticatedRequestHandler = async (req, res, next) => {
-  try {
-    const authContext = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    })
+  const authContext = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  })
 
-    if (!authContext) {
-      throw new HttpError(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required')
-    }
-
-    if (authContext.user.banned === true) {
-      throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Account is disabled')
-    }
-
-    res.locals.auth = authContext
-    next()
-  } catch (error) {
-    next(error)
+  if (!authContext) {
+    throw new HttpError(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required')
   }
+
+  if (authContext.user.banned === true) {
+    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Account is disabled')
+  }
+
+  res.locals.auth = authContext
+  next()
 }
 
 export const requirePasswordChangeNotRequired: AuthenticatedRequestHandler = (_req, res, next) => {
   const authContext = getAuthContext(res)
 
   if (authContext.user.mustChangePassword === true) {
-    next(new HttpError(403, ERROR_CODES.FORBIDDEN, 'Password change required'))
-    return
+    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Password change required')
   }
 
   next()
@@ -50,8 +45,7 @@ export const requireRole =
     if (!hasAuthRole(authContext.user.role, requiredRole)) {
       const message = requiredRole === 'superadmin' ? 'Superadmin role required' : 'Required role missing'
 
-      next(new HttpError(403, ERROR_CODES.FORBIDDEN, message))
-      return
+      throw new HttpError(403, ERROR_CODES.FORBIDDEN, message)
     }
 
     next()
