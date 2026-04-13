@@ -69,26 +69,6 @@ interface UpdateMyProfileParams {
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
 
-const countActiveSuperadmins = () =>
-  prisma.user.count({
-    where: {
-      role: 'superadmin',
-      banned: false,
-    },
-  })
-
-const ensureAnotherActiveSuperadminRemains = async (user: SuperadminUserRecord) => {
-  if (user.role !== 'superadmin' || user.banned === true) {
-    return
-  }
-
-  const activeSuperadminCount = await countActiveSuperadmins()
-
-  if (activeSuperadminCount <= 1) {
-    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'At least one active superadmin must remain')
-  }
-}
-
 const mapSuperadminUser = (user: SuperadminUserRecord): SuperadminUser => ({
   id: user.id,
   email: user.email,
@@ -270,10 +250,7 @@ export const createSuperadminUser = async (context: SuperadminActionContext, inp
     const originalError = isServiceOrchestrationError(error) ? error.cause : error
     const mappedError = mapBetterAuthError(originalError)
 
-    if (
-      isServiceOrchestrationError(error) &&
-      (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)
-    ) {
+    if (isServiceOrchestrationError(error) && (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)) {
       logger.error(
         {
           reqId: context.requestId,
@@ -395,8 +372,6 @@ export const updateSuperadminUser = async (context: SuperadminActionContext, use
             {
               name: 'auth.banUser',
               run: async () => {
-                await ensureAnotherActiveSuperadminRemains(existingUser)
-
                 await auth.api.banUser({
                   body: {
                     userId,
@@ -489,10 +464,7 @@ export const updateSuperadminUser = async (context: SuperadminActionContext, use
       throw mappedError
     }
 
-    if (
-      isServiceOrchestrationError(error) &&
-      (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)
-    ) {
+    if (isServiceOrchestrationError(error) && (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)) {
       logger.error(
         {
           reqId: context.requestId,
@@ -530,10 +502,6 @@ export const updateSuperadminUserRole = async (context: SuperadminActionContext,
 
   if (existingUser.role === input.role) {
     return mapSuperadminUser(existingUser)
-  }
-
-  if (existingUser.role === 'superadmin' && input.role !== 'superadmin') {
-    await ensureAnotherActiveSuperadminRemains(existingUser)
   }
 
   try {
@@ -579,10 +547,7 @@ export const updateSuperadminUserRole = async (context: SuperadminActionContext,
     const originalError = isServiceOrchestrationError(error) ? error.cause : error
     const mappedError = mapBetterAuthError(originalError)
 
-    if (
-      isServiceOrchestrationError(error) &&
-      (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)
-    ) {
+    if (isServiceOrchestrationError(error) && (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)) {
       logger.error(
         {
           reqId: context.requestId,
@@ -653,6 +618,8 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile, 
   if (input.firstName !== undefined) profileData.firstName = input.firstName
   if (input.lastName !== undefined) profileData.lastName = input.lastName
 
+  let authAvatarUpdated = false
+
   try {
     if (newAvatarPublicPath !== undefined) {
       await auth.api.updateUser({
@@ -661,6 +628,8 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile, 
         },
         headers: requestHeaders,
       })
+
+      authAvatarUpdated = true
     }
 
     await prisma.profile.upsert({
@@ -669,6 +638,18 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile, 
       update: profileData,
     })
   } catch (error) {
+    if (authAvatarUpdated) {
+      logger.error(
+        {
+          actorUserId,
+          newAvatarPublicPath,
+          avatarUploadPath: avatarFile?.path,
+          err: error,
+        },
+        'Profile update partially succeeded before failing',
+      )
+    }
+
     if (avatarFile) {
       await deleteUploadedFile(avatarFile.path)
     }

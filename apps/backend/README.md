@@ -96,14 +96,12 @@ That contract is intentional:
 
 - the backend stores a public path, not an API-relative asset key
 - the dashboard renders that value as a public URL/path directly
-- `src/app.ts` mounts `express.static()` on `/uploads/avatars` as the backend
-  fallback and local-dev implementation
-- in production, nginx can terminate `/uploads` directly instead of forwarding
-  avatar reads through the backend app
+- `src/app.ts` mounts `express.static()` on `/uploads/avatars` for local
+  development and the default backend-served path
 
-The default template assumes a same-origin deployment for dashboard pages and
-public avatar assets. If you move to split frontend/backend origins or multiple
-app instances, this contract is no longer sufficient on its own.
+The starter assumes the dashboard can read those public avatar paths directly.
+If a product later moves to split origins or multi-instance storage, that
+becomes product-specific work rather than starter baseline behavior.
 
 ## Why `src/lib` exists
 

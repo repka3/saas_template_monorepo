@@ -1,283 +1,139 @@
-# Validated Hardening Plan
+# Minimal Template Reset Plan
 
 ## Summary
 
-This plan replaces the earlier broad hardening pass with a narrower, validated follow-up list.
+This plan replaces the previous broad hardening pass with a minimal reset.
 
-The scope here is based on:
+The template should optimize for:
 
-- the current code in the repo
-- the gaps that are still real after the recent refactor
-- fixes that match the actual stack and deployment model
-- documented framework and infrastructure behavior where that affects correctness
+- a clean small-SaaS baseline
+- simple extension points
+- explicit service logic
+- manual operator recovery for rare bad states
 
-The goal is not to reopen every preference-level review comment. The goal is to close the gaps that are real, material, and still worth fixing.
+The template should not optimize for speculative platform concerns.
 
-## What This Plan Optimizes For
+## Locked Decisions
 
-- Preserve the current lean starter contract.
-- Fix real cross-system failure gaps before adding more features.
-- Tighten the documented production baseline so it matches actual runtime behavior.
-- Improve reliability and clarity where the current code is easy to misread or partially fail.
+- Remove the "at least one active superadmin" rule.
+- Do not treat Docker or deployment docs as part of the supported baseline right now.
+- Accept rare cross-system partial failures between Better Auth and Prisma.
+- On partial failure, log clearly and rely on manual remediation instead of stronger rollback logic.
+- Keep fixes scoped to real correctness issues, not polish or infrastructure theater.
 
-## Phase 1: Backend Correctness
+## Phase 1: Backend Simplification
 
-### 1. Close the orphaned-user gap in `createSuperadminUser`
+### 1. Remove the last-superadmin invariant
 
-The current orchestration creates a Better Auth user first and then writes profile data in Prisma. If the Prisma step fails, the auth user remains behind with no profile row.
+Current issue:
 
-Current gap:
-
-- `apps/backend/src/services/userServices.ts`
-- `createSuperadminUser`
-
-Concrete work:
-
-- enable a supported Better Auth user-deletion path if that is the intended rollback mechanism
-- add a compensator for `auth.createUser` when rollback is safe and supported
-- if hard delete is intentionally not enabled, document the manual remediation path and log the partial-failure state explicitly
-- add a direct test for the partial-failure scenario
-
-Acceptance criteria:
-
-- a failed create flow does not silently leave an orphaned auth user without a clear rollback or remediation path
-- the failure mode is test-covered
-
-### 2. Harden `updateMyProfile` partial-failure handling
-
-`updateMyProfile` currently updates Better Auth image state and Prisma profile state in a flat flow. If one side succeeds and the other fails, the user can end up with inconsistent profile state.
-
-Current gap:
-
-- `apps/backend/src/services/userServices.ts`
-- `updateMyProfile`
+- the service layer treats "at least one active superadmin must remain" as an application rule
+- that rule adds policy and edge-case complexity the template does not need
 
 Concrete work:
 
-- make the cross-system steps explicit
-- define the failure policy for avatar updates and profile writes
-- if Better Auth image state changes before Prisma fails, either compensate safely or log a structured partial-failure event
-- keep uploaded-file cleanup in place for failed writes
-- add tests for avatar update failure paths
+- remove `ensureAnotherActiveSuperadminRemains`
+- remove the related checks from `updateSuperadminUser`
+- remove the related checks from `updateSuperadminUserRole`
+- allow banning or demoting the last superadmin
+- keep bootstrap or seed scripts as the recovery path
 
 Acceptance criteria:
 
-- self-service profile updates have an explicit partial-failure policy
-- auth state, Prisma state, and file cleanup behavior are test-covered
+- disabling the last superadmin is allowed
+- demoting the last superadmin is allowed
+- the backend no longer encodes this survivability policy
 
-### 3. Move superadmin survivability checks before orchestration
+### 2. Keep `createSuperadminUser` failure handling simple
 
-Disabling the last active superadmin is already blocked, but one path performs the check inside an orchestration step instead of before the orchestration begins.
+Current issue:
 
-Current gap:
-
-- `apps/backend/src/services/userServices.ts`
-- `updateSuperadminUser`
+- `createSuperadminUser` creates the auth user before the Prisma profile row
+- if the Prisma write fails, the auth user can remain without a profile row
 
 Concrete work:
 
-- move `ensureAnotherActiveSuperadminRemains` out of the `auth.banUser` step and into a pre-check before orchestration starts
-- keep the existing pre-check shape used by `updateSuperadminUserRole`
+- keep the current create flow structurally simple
+- do not add delete-user rollback logic
+- log a structured partial-failure event when auth user creation succeeds and a later step fails
+- make the failure path explicit in tests
 
 Acceptance criteria:
 
-- business-rule guards run before reversible mutation steps begin
-- failed preconditions do not enter orchestration unnecessarily
+- partial failure is visible in logs
+- no stronger orchestration or compensating delete flow is added
+- the failure path is test-covered
 
-### 4. Align partial-failure logging across user-management flows
+### 3. Keep `updateMyProfile` failure handling simple
 
-The create and update flows do not currently handle mapped errors the same way in their catch blocks. That makes partial-failure logging less consistent than it should be.
+Current issue:
 
-Current gap:
-
-- `apps/backend/src/services/userServices.ts`
+- `updateMyProfile` can update Better Auth image state before the Prisma profile write
+- if the Prisma write fails, auth state and profile state can diverge
 
 Concrete work:
 
-- use one catch-block pattern for create, update, and role-change flows
-- log partial-failure summaries before returning mapped HTTP errors
-- keep Better Auth error mapping behavior intact
+- keep the current flow explicit and simple
+- do not add rollback logic for auth image changes
+- log a structured partial-failure event when auth succeeds and Prisma fails
+- keep uploaded-file cleanup for failed avatar writes
+- add direct tests for the failure path
 
 Acceptance criteria:
 
-- partial cross-system failures are logged consistently across the superadmin service flows
-- mapped errors do not suppress useful operational logging
+- partial failure is visible in logs
+- uploaded temp files are still cleaned up on failed writes
+- the failure path is test-covered
 
-## Phase 2: Authorization Clarity
+## Phase 2: Scope Cleanup
 
-### 5. Make the user policy boundary explicit
+### 4. Remove deployment from baseline planning
 
-Authorization was successfully centralized, but the current policy API is easy to misread as a universal gate for every user mutation. Self-service profile updates are intentionally outside that `update` action.
+Current issue:
 
-Current gap:
-
-- `apps/backend/src/utils/authorization/user-policy.ts`
-- `apps/backend/src/controllers/userControllers.ts`
+- the repo and plan treat deployment artifacts as if they are part of the starter contract
+- that creates scope and maintenance burden before the deployment model is even decided
 
 Concrete work:
 
-- either document that `patchMyProfileController` is a separate self-service path
-- or add an explicit action such as `update-own-profile`
-- tighten switch exhaustiveness with a `never` assertion instead of silent `default` fallbacks
+- remove deployment hardening work from this plan
+- remove Docker and deployment docs from the supported baseline language in repo docs
+- treat deployment as future product-specific work, not template-core work
 
 Acceptance criteria:
 
-- future contributors can tell which mutations are admin-managed and which are self-service
-- adding a new policy action causes TypeScript to flag missing switch cases
+- the plan does not include Docker hardening or reverse-proxy guidance
+- the template baseline is described in terms of code structure and local development, not deployment assumptions
 
-## Phase 3: Frontend Reliability
+### 5. Remove non-blocking polish from this pass
 
-### 6. Add application-owned logging for caught render errors
+Out of scope for this reset:
 
-The dashboard now has error boundaries, but the boundary implementation does not report caught errors anywhere.
-
-Current gap:
-
-- `apps/dashboard/src/routes/route-error-boundary.tsx`
-
-Concrete work:
-
-- implement `componentDidCatch(error, info)` to log caught render errors
-- wire the handler to an error-reporting service later if the starter gains one
-- keep the existing fallback UI behavior
+- routed Suspense UX refinement
+- frontend error telemetry abstraction
+- README/deferred-list polish beyond removing baseline contradictions
+- broader frontend test expansion
+- coverage thresholds
+- stylistic refactors that do not fix a real defect
 
 Acceptance criteria:
 
-- caught render failures are visible in app-owned logging
-- the boundary keeps the current recovery UX
+- this plan stays focused on backend correctness and template scope reduction
+- non-blocking polish does not gate completion
 
-### 7. Fix small routed-UI reliability issues
+## Tests
 
-These are not structural blockers, but they are real cleanup items and they affect polish and correctness.
-
-Current gaps:
-
-- `apps/dashboard/src/routes/auth-pages.tsx`
-- `apps/dashboard/src/routes/route-error-boundary.tsx`
-
-Concrete work:
-
-- clean up the delayed redirect timeout in `ResetPasswordPage` so it cannot fire after unmount
-- change the app-level error boundary retry label so it matches the actual scope
-
-Acceptance criteria:
-
-- the reset-password route does not leave an uncontrolled timer behind
-- app-level fallback copy matches the boundary scope
-
-### 8. Treat route-level Suspense refinement as UX polish, not as a failed baseline
-
-Lazy loading is already in place and meets the original baseline. The remaining issue is user experience: the top-level Suspense boundary can replace the shell during lazy loads.
-
-Current gap:
-
-- `apps/dashboard/src/App.tsx`
-
-Concrete work:
-
-- move Suspense boundaries closer to routed content where that improves UX
-- keep the current route-splitting approach
-
-Acceptance criteria:
-
-- route-level code splitting remains the default
-- loading a child route does not unnecessarily blank the whole shell
-
-## Phase 4: Delivery Baseline
-
-### 9. Fix the documented nginx upload limit
-
-The production deployment guide currently omits `client_max_body_size` in the reverse-proxy example. The backend allows avatar uploads above nginx's default body-size limit.
-
-Current gap:
-
-- `DEPLOYMENT.md`
-
-Concrete work:
-
-- add `client_max_body_size` to the `/api/` proxy example
-- keep the documented value aligned with `MAX_AVATAR_UPLOAD_BYTES`
-- add a short TLS note so the example is not read as a complete production edge configuration
-
-Acceptance criteria:
-
-- the documented reverse-proxy shape does not reject valid avatar uploads by default
-- deployment docs match the supported same-origin upload contract
-
-### 10. Add Docker build-context hygiene
-
-The repo currently ships Dockerfiles without `.dockerignore` files, and the backend runtime stage copies the full build workspace into the runtime image.
-
-Current gaps:
-
-- no `.dockerignore` files present
-- `apps/backend/Dockerfile`
-
-Concrete work:
-
-- add `.dockerignore` coverage for the Docker build contexts used by this repo
-- exclude `.git`, local dependency folders, build artifacts, temp upload directories, and test-only artifacts from the build context
-- narrow the backend runtime `COPY --from=build` to the runtime files the backend actually needs
-
-Acceptance criteria:
-
-- Docker builds stop sending unnecessary local context
-- the backend runtime image no longer contains the full build workspace by default
-
-### 11. Sync documentation with the actual deferred scope
-
-The root README deferred-items list no longer matches the current hardening plan and deployment docs.
-
-Current gap:
-
-- `README.md`
-
-Concrete work:
-
-- update the deferred list to match the intentionally unsupported baseline
-- include the items that are still explicitly deferred rather than partially implied
-
-Acceptance criteria:
-
-- the README, deployment docs, and plan describe the same supported baseline
-
-## Phase 5: Test Coverage Follow-Through
-
-### 12. Add direct tests for the risky paths that remain
-
-The repo has a much better baseline than before, but the remaining risk is concentrated in a few untested failure and recovery paths.
-
-Priority test additions:
-
-- unit tests for `service-orchestration.ts`
-- `createSuperadminUser` partial-failure coverage
-- `updateMyProfile` partial-failure coverage
-- broader `user-policy.ts` action coverage
-- frontend tests for the currently smoke-only superadmin and profile flows
-- optional coverage thresholds in dashboard Vitest config once the current floor is acceptable
-
-Acceptance criteria:
-
-- the repo directly tests the cross-system failure paths that are easiest to regress
-- coverage settings, if added, reflect an intentional floor rather than a token threshold
-
-## Explicitly Out of Scope For This Pass
-
-- replacing the current auth provider
-- introducing Redis or multi-instance coordination as baseline infrastructure
-- object storage abstraction for uploads
-- broad nginx hardening beyond the documented baseline contract
-- adding product-specific billing, organizations, or job systems
-- refactoring purely stylistic duplication unless it materially helps a validated fix
+- `createSuperadminUser` logs partial failure when auth creation succeeds and Prisma profile write fails
+- `updateMyProfile` logs partial failure when auth avatar update succeeds and Prisma profile write fails
+- `updateMyProfile` still deletes uploaded temp files on failed avatar writes
+- `updateSuperadminUser` allows disabling the last superadmin
+- `updateSuperadminUserRole` allows demoting the last superadmin
 
 ## Exit Criteria
 
-This plan is complete when:
+This pass is complete when:
 
-- cross-system backend mutations have explicit rollback or remediation behavior where needed
-- self-service profile updates have a defined partial-failure policy
-- authorization boundaries are explicit and exhaustively typed
-- caught render errors are visible to operators
-- deployment docs no longer contradict backend upload behavior
-- Docker build inputs and runtime image contents are intentionally scoped
-- tests cover the remaining risky mutation and recovery paths
+- the backend no longer enforces last-superadmin survivability
+- the two real cross-system failure paths are explicit, logged, and tested
+- the plan no longer includes speculative deployment or polish work
+- the template baseline is smaller and easier to reason about

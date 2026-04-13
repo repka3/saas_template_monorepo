@@ -7,7 +7,7 @@ This repo is a lean SaaS starter, not a full platform. The supported baseline is
 - one Astro landing app
 - Better Auth for authentication flows
 - Prisma + PostgreSQL for persistence
-- same-origin dashboard and avatar delivery by default
+- same-origin dashboard and avatar delivery in local development and simple setups
 
 The goal is to keep the repo explicit and extendable without wrapping the core stack in a large custom framework.
 
@@ -77,7 +77,7 @@ cp apps/dashboard/.env.example apps/dashboard/.env
 cp apps/landing/.env.example apps/landing/.env
 ```
 
-3. Start PostgreSQL.
+3. Start PostgreSQL for local development.
 
 ```sh
 docker compose -f docker-compose.localhost.yml up -d
@@ -96,6 +96,8 @@ pnpm --filter backend prisma:generate
 pnpm --filter backend seed:superadmin
 ```
 
+If every superadmin is later disabled or demoted, rerun the same command to restore operator access.
+
 6. Start the workspace.
 
 ```sh
@@ -107,16 +109,6 @@ Defaults:
 - backend: `http://localhost:3005`
 - landing: `http://localhost:4321`
 - dashboard: `http://localhost:5173`
-
-## Deployment
-
-Production Docker baselines are included for:
-
-- `apps/backend/Dockerfile`
-- `apps/dashboard/Dockerfile`
-- `apps/landing/Dockerfile`
-
-The supported deployment contract is documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Deferred On Purpose
 

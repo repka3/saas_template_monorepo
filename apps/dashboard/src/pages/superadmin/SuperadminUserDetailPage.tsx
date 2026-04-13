@@ -422,7 +422,7 @@ export default function SuperadminUserDetailPage() {
                   </div>
                   <FieldDescription>
                     {canEditRole
-                      ? 'Existing superadmins can be demoted here. The last active superadmin cannot be demoted.'
+                      ? 'Existing superadmins can be demoted here. If all superadmins are removed, use the bootstrap seed flow to recover access.'
                       : 'Standard users cannot be promoted here. New superadmin accounts must be created directly by a superadmin.'}
                   </FieldDescription>
                 </FieldContent>

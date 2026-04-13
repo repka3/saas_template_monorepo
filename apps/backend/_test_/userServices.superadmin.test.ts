@@ -37,6 +37,7 @@ const authMock = {
   api: {
     createUser: vi.fn(),
     adminUpdateUser: vi.fn(),
+    updateUser: vi.fn(),
     setRole: vi.fn(),
     setUserPassword: vi.fn(),
     revokeUserSessions: vi.fn(),
@@ -46,6 +47,7 @@ const authMock = {
 }
 
 const loggerErrorMock = vi.fn()
+const deleteUploadedFileMock = vi.fn()
 
 vi.mock('../src/lib/prisma.js', () => ({
   prisma: prismaMock,
@@ -62,7 +64,13 @@ vi.mock('../src/lib/logger.js', () => ({
   },
 }))
 
-const { createSuperadminUser, listSuperadminUsers, updateSuperadminUser, updateSuperadminUserRole } = await import('../src/services/userServices.js')
+vi.mock('../src/middleware/upload-avatar.js', () => ({
+  avatarDir: '/tmp/test-avatars',
+  deleteUploadedFile: deleteUploadedFileMock,
+}))
+
+const { createSuperadminUser, listSuperadminUsers, updateMyProfile, updateSuperadminUser, updateSuperadminUserRole } =
+  await import('../src/services/userServices.js')
 
 const buildUserRecord = (overrides?: Record<string, unknown>) => ({
   id: 'user-2',
@@ -118,6 +126,8 @@ beforeEach(() => {
   authMock.api.createUser.mockResolvedValue({ user: { id: 'user-2' } })
   authMock.api.adminUpdateUser.mockReset()
   authMock.api.adminUpdateUser.mockResolvedValue(buildUserRecord())
+  authMock.api.updateUser.mockReset()
+  authMock.api.updateUser.mockResolvedValue({ status: true })
   authMock.api.setRole.mockReset()
   authMock.api.setRole.mockResolvedValue({ success: true })
   authMock.api.setUserPassword.mockReset()
@@ -129,6 +139,7 @@ beforeEach(() => {
   authMock.api.unbanUser.mockReset()
   authMock.api.unbanUser.mockResolvedValue({ user: buildUserRecord({ banned: false }) })
   loggerErrorMock.mockReset()
+  deleteUploadedFileMock.mockReset()
 })
 
 describe('listSuperadminUsers', () => {
@@ -276,11 +287,8 @@ describe('createSuperadminUser', () => {
 
 describe('updateSuperadminUser', () => {
   it('resets emailVerified on email change, updates password state, and upserts profile', async () => {
-    prismaMock.user.findUnique
-      .mockResolvedValueOnce(buildUserRecord())
-    prismaMock.user.findUniqueOrThrow.mockResolvedValueOnce(
-      buildUserRecord({ email: 'updated@example.com', profile: { firstName: 'Ada', lastName: 'User' } }),
-    )
+    prismaMock.user.findUnique.mockResolvedValueOnce(buildUserRecord())
+    prismaMock.user.findUniqueOrThrow.mockResolvedValueOnce(buildUserRecord({ email: 'updated@example.com', profile: { firstName: 'Ada', lastName: 'User' } }))
 
     const user = await updateSuperadminUser(
       {
@@ -368,30 +376,31 @@ describe('updateSuperadminUser', () => {
     expect(loggerErrorMock).not.toHaveBeenCalled()
   })
 
-  it('prevents disabling the last active superadmin', async () => {
+  it('allows disabling the last active superadmin', async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin', banned: false }))
-    prismaMock.user.count.mockResolvedValueOnce(1)
+    prismaMock.user.findUniqueOrThrow.mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin', banned: true }))
 
-    await expect(
-      updateSuperadminUser(
-        {
-          actor: {
-            id: 'actor-1',
-            role: 'superadmin',
-          },
-          requestHeaders: new Headers(),
+    const user = await updateSuperadminUser(
+      {
+        actor: {
+          id: 'actor-1',
+          role: 'superadmin',
         },
-        'user-2',
-        {
-          disabled: true,
-        },
-      ),
-    ).rejects.toMatchObject({
-      statusCode: 403,
-      code: 'forbidden',
+        requestHeaders: new Headers(),
+      },
+      'user-2',
+      {
+        disabled: true,
+      },
+    )
+
+    expect(authMock.api.banUser).toHaveBeenCalledWith({
+      body: {
+        userId: 'user-2',
+      },
+      headers: expect.any(Headers),
     })
-
-    expect(authMock.api.banUser).not.toHaveBeenCalled()
+    expect(user.banned).toBe(true)
   })
 })
 
@@ -431,13 +440,13 @@ describe('updateSuperadminUserRole', () => {
 
     await expect(
       updateSuperadminUserRole(
-      {
-        actor: {
-          id: 'actor-1',
-          role: 'superadmin',
+        {
+          actor: {
+            id: 'actor-1',
+            role: 'superadmin',
+          },
+          requestHeaders: new Headers(),
         },
-        requestHeaders: new Headers(),
-      },
         'user-2',
         {
           role: 'superadmin',
@@ -451,12 +460,12 @@ describe('updateSuperadminUserRole', () => {
     expect(authMock.api.setRole).not.toHaveBeenCalled()
   })
 
-  it('prevents demoting the last active superadmin', async () => {
-    prismaMock.user.findUnique.mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin', banned: false }))
-    prismaMock.user.count.mockResolvedValueOnce(1)
+  it('allows demoting the last active superadmin', async () => {
+    prismaMock.user.findUnique
+      .mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'superadmin', banned: false }))
+      .mockResolvedValueOnce(buildUserRecord({ id: 'user-2', role: 'user', banned: false }))
 
-    await expect(
-      updateSuperadminUserRole(
+    const user = await updateSuperadminUserRole(
       {
         actor: {
           id: 'actor-1',
@@ -464,16 +473,56 @@ describe('updateSuperadminUserRole', () => {
         },
         requestHeaders: new Headers(),
       },
-        'user-2',
-        {
-          role: 'user',
-        },
-      ),
-    ).rejects.toMatchObject({
-      statusCode: 403,
-      code: 'forbidden',
-    })
+      'user-2',
+      {
+        role: 'user',
+      },
+    )
 
-    expect(authMock.api.setRole).not.toHaveBeenCalled()
+    expect(authMock.api.setRole).toHaveBeenCalledWith({
+      body: {
+        userId: 'user-2',
+        role: 'user',
+      },
+      headers: expect.any(Headers),
+    })
+    expect(user.role).toBe('user')
+  })
+})
+
+describe('updateMyProfile', () => {
+  it('logs and cleans up an uploaded avatar when Prisma fails after the auth avatar update succeeds', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce({ image: null })
+    prismaMock.profile.upsert.mockRejectedValueOnce(new Error('db write failed'))
+
+    await expect(
+      updateMyProfile('user-2', {
+        input: {
+          firstName: 'Ada',
+        },
+        avatarFile: {
+          filename: 'generated-avatar.png',
+          path: '/tmp/generated-avatar.png',
+        } as Express.Multer.File,
+        requestHeaders: new Headers(),
+      }),
+    ).rejects.toThrow('db write failed')
+
+    expect(authMock.api.updateUser).toHaveBeenCalledWith({
+      body: {
+        image: '/uploads/avatars/generated-avatar.png',
+      },
+      headers: expect.any(Headers),
+    })
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 'user-2',
+        newAvatarPublicPath: '/uploads/avatars/generated-avatar.png',
+        avatarUploadPath: '/tmp/generated-avatar.png',
+        err: expect.any(Error),
+      }),
+      'Profile update partially succeeded before failing',
+    )
+    expect(deleteUploadedFileMock).toHaveBeenCalledWith('/tmp/generated-avatar.png')
   })
 })
