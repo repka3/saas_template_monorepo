@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo watch dev",
     "lint": "turbo run lint",
     "prisma": "pnpm --filter backend prisma:migrate && pnpm --filter backend prisma:generate",
     "format": "prettier --no-error-on-unmatched-pattern --write \"apps/*/src/**/*.{astro,js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"apps/*/_test_/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\" \"packages/*/src/**/*.{js,jsx,ts,tsx,css,scss,md,json,yml,yaml}\"",

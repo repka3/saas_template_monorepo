@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @repo/contracts build",
     "dev": "vite",
     "prebuild": "pnpm --filter @repo/contracts build",
     "build": "tsc -b && vite build",

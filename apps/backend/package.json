@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @repo/contracts build",
     "dev": "tsx watch src/server.ts",
     "prebuild": "pnpm --filter @repo/contracts build",
     "build": "pnpm prisma:generate && tsc -p tsconfig.json",
