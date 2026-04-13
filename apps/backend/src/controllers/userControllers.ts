@@ -34,10 +34,13 @@ export const listUsersController: RequestHandler = async (req, res) => {
 }
 
 export const createUserController: RequestHandler<never, CreateSuperadminUserResponse, CreateUserBodyInput> = async (req, res) => {
-  const actorUserId = getAuthUserId(res)
+  const actor = getAuthUser(res)
   const user = await createSuperadminUser(
     {
-      actorUserId,
+      actor: {
+        id: actor.id,
+        role: actor.role,
+      },
       requestHeaders: fromNodeHeaders(req.headers),
     },
     req.body as CreateUserInput,
@@ -83,10 +86,13 @@ export const patchMyProfileController: RequestHandler<never, { user: unknown }, 
 }
 
 export const updateUserController: RequestHandler<UpdateUserParamsInput, UpdateSuperadminUserResponse, UpdateUserBodyInput> = async (req, res) => {
-  const actorUserId = getAuthUserId(res)
+  const actor = getAuthUser(res)
   const user = await updateSuperadminUser(
     {
-      actorUserId,
+      actor: {
+        id: actor.id,
+        role: actor.role,
+      },
       requestHeaders: fromNodeHeaders(req.headers),
       requestId: req.id !== undefined ? String(req.id) : undefined,
     },
@@ -98,10 +104,13 @@ export const updateUserController: RequestHandler<UpdateUserParamsInput, UpdateS
 }
 
 export const updateUserRoleController: RequestHandler<UpdateUserParamsInput, UpdateSuperadminUserRoleResponse, UpdateUserRoleBodyInput> = async (req, res) => {
-  const actorUserId = getAuthUserId(res)
+  const actor = getAuthUser(res)
   const user = await updateSuperadminUserRole(
     {
-      actorUserId,
+      actor: {
+        id: actor.id,
+        role: actor.role,
+      },
       requestHeaders: fromNodeHeaders(req.headers),
       requestId: req.id !== undefined ? String(req.id) : undefined,
     },

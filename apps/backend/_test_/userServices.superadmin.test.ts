@@ -24,6 +24,7 @@ const prismaMock = {
   $transaction: vi.fn(),
   user: {
     findUnique: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
     findMany: vi.fn(),
     count: vi.fn(),
   },
@@ -105,6 +106,8 @@ beforeEach(() => {
   })
   prismaMock.user.findUnique.mockReset()
   prismaMock.user.findUnique.mockResolvedValue(buildUserRecord())
+  prismaMock.user.findUniqueOrThrow.mockReset()
+  prismaMock.user.findUniqueOrThrow.mockResolvedValue(buildUserRecord())
   prismaMock.user.findMany.mockReset()
   prismaMock.user.findMany.mockResolvedValue([buildUserRecord()])
   prismaMock.user.count.mockReset()
@@ -172,7 +175,10 @@ describe('createSuperadminUser', () => {
   it('uses Better Auth createUser and creates a profile row', async () => {
     const user = await createSuperadminUser(
       {
-        actorUserId: 'actor-1',
+        actor: {
+          id: 'actor-1',
+          role: 'superadmin',
+        },
         requestHeaders: new Headers(),
       },
       {
@@ -216,7 +222,10 @@ describe('createSuperadminUser', () => {
 
     await createSuperadminUser(
       {
-        actorUserId: 'actor-1',
+        actor: {
+          id: 'actor-1',
+          role: 'superadmin',
+        },
         requestHeaders: new Headers(),
       },
       {
@@ -246,7 +255,10 @@ describe('createSuperadminUser', () => {
     await expect(
       createSuperadminUser(
         {
-          actorUserId: 'actor-1',
+          actor: {
+            id: 'actor-1',
+            role: 'superadmin',
+          },
           requestHeaders: new Headers(),
         },
         {
@@ -264,29 +276,18 @@ describe('createSuperadminUser', () => {
 
 describe('updateSuperadminUser', () => {
   it('resets emailVerified on email change, updates password state, and upserts profile', async () => {
-    const txProfileUpsert = vi.fn().mockResolvedValue(undefined)
-    const txUserFindUniqueOrThrow = vi
-      .fn()
-      .mockResolvedValue(buildUserRecord({ email: 'updated@example.com', profile: { firstName: 'Ada', lastName: 'User' } }))
-
-    prismaMock.$transaction.mockImplementationOnce(async (input: unknown) => {
-      if (typeof input !== 'function') {
-        throw new Error('expected callback transaction')
-      }
-
-      return input({
-        profile: {
-          upsert: txProfileUpsert,
-        },
-        user: {
-          findUniqueOrThrow: txUserFindUniqueOrThrow,
-        },
-      })
-    })
+    prismaMock.user.findUnique
+      .mockResolvedValueOnce(buildUserRecord())
+    prismaMock.user.findUniqueOrThrow.mockResolvedValueOnce(
+      buildUserRecord({ email: 'updated@example.com', profile: { firstName: 'Ada', lastName: 'User' } }),
+    )
 
     const user = await updateSuperadminUser(
       {
-        actorUserId: 'actor-1',
+        actor: {
+          id: 'actor-1',
+          role: 'superadmin',
+        },
         requestHeaders: new Headers(),
         requestId: 'req-1',
       },
@@ -330,37 +331,41 @@ describe('updateSuperadminUser', () => {
       },
       headers: expect.any(Headers),
     })
-    expect(txProfileUpsert).toHaveBeenCalled()
-    expect(txUserFindUniqueOrThrow).toHaveBeenCalled()
+    expect(prismaMock.profile.upsert).toHaveBeenCalled()
     expect(user.email).toBe('updated@example.com')
   })
 
-  it('logs partial Better Auth success when a later Prisma write fails', async () => {
-    prismaMock.$transaction.mockRejectedValueOnce(new Error('db write failed'))
+  it('compensates reversible Better Auth writes when a later Prisma write fails', async () => {
+    prismaMock.profile.upsert.mockRejectedValueOnce(new Error('db write failed'))
 
     await expect(
       updateSuperadminUser(
         {
-          actorUserId: 'actor-1',
+          actor: {
+            id: 'actor-1',
+            role: 'superadmin',
+          },
           requestHeaders: new Headers(),
           requestId: 'req-1',
         },
         'user-2',
         {
           name: 'Updated User',
+          firstName: 'Ada',
         },
       ),
     ).rejects.toThrow('db write failed')
 
-    expect(loggerErrorMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        reqId: 'req-1',
-        actorUserId: 'actor-1',
-        targetUserId: 'user-2',
-        completedMutationSteps: ['adminUpdateUser'],
-      }),
-      'Superadmin user update partially succeeded before failing',
-    )
+    expect(authMock.api.adminUpdateUser).toHaveBeenNthCalledWith(2, {
+      body: {
+        userId: 'user-2',
+        data: {
+          name: 'Created User',
+        },
+      },
+      headers: expect.any(Headers),
+    })
+    expect(loggerErrorMock).not.toHaveBeenCalled()
   })
 
   it('prevents disabling the last active superadmin', async () => {
@@ -370,7 +375,10 @@ describe('updateSuperadminUser', () => {
     await expect(
       updateSuperadminUser(
         {
-          actorUserId: 'actor-1',
+          actor: {
+            id: 'actor-1',
+            role: 'superadmin',
+          },
           requestHeaders: new Headers(),
         },
         'user-2',
@@ -396,7 +404,10 @@ describe('updateSuperadminUserRole', () => {
 
     const user = await updateSuperadminUserRole(
       {
-        actorUserId: 'actor-1',
+        actor: {
+          id: 'actor-1',
+          role: 'superadmin',
+        },
         requestHeaders: new Headers(),
       },
       'user-2',
@@ -420,10 +431,13 @@ describe('updateSuperadminUserRole', () => {
 
     await expect(
       updateSuperadminUserRole(
-        {
-          actorUserId: 'actor-1',
-          requestHeaders: new Headers(),
+      {
+        actor: {
+          id: 'actor-1',
+          role: 'superadmin',
         },
+        requestHeaders: new Headers(),
+      },
         'user-2',
         {
           role: 'superadmin',
@@ -443,10 +457,13 @@ describe('updateSuperadminUserRole', () => {
 
     await expect(
       updateSuperadminUserRole(
-        {
-          actorUserId: 'actor-1',
-          requestHeaders: new Headers(),
+      {
+        actor: {
+          id: 'actor-1',
+          role: 'superadmin',
         },
+        requestHeaders: new Headers(),
+      },
         'user-2',
         {
           role: 'user',

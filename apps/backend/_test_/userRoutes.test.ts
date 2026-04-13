@@ -414,7 +414,10 @@ describe('POST /api/superadmin/users', () => {
     expect(response.status).toBe(201)
     expect(createSuperadminUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        actorUserId: 'user-1',
+        actor: {
+          id: 'user-1',
+          role: 'superadmin',
+        },
       }),
       {
         email: 'person@example.com',
@@ -471,7 +474,10 @@ describe('PATCH /api/superadmin/users/:id', () => {
     expect(response.status).toBe(200)
     expect(updateSuperadminUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        actorUserId: 'user-1',
+        actor: {
+          id: 'user-1',
+          role: 'superadmin',
+        },
       }),
       'user-2',
       {
@@ -530,7 +536,10 @@ describe('PATCH /api/superadmin/users/:id/role', () => {
     expect(response.status).toBe(200)
     expect(updateSuperadminUserRoleMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        actorUserId: 'user-1',
+        actor: {
+          id: 'user-1',
+          role: 'superadmin',
+        },
       }),
       'user-2',
       {

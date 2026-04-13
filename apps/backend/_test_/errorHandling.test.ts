@@ -1,5 +1,5 @@
 import request from 'supertest'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 Object.assign(process.env, {
   NODE_ENV: 'test',
@@ -17,15 +17,22 @@ Object.assign(process.env, {
   LOG_LEVEL: 'silent',
 })
 
+const getSessionMock = vi.fn()
+
 vi.mock('../src/lib/auth.js', () => ({
   auth: {
     api: {
-      getSession: vi.fn().mockResolvedValue(null),
+      getSession: getSessionMock,
     },
   },
 }))
 
 const { app } = await import('../src/app.js')
+
+beforeEach(() => {
+  getSessionMock.mockReset()
+  getSessionMock.mockResolvedValue(null)
+})
 
 describe('error handling architecture', () => {
   describe('error response envelope', () => {
@@ -61,14 +68,43 @@ describe('error handling architecture', () => {
       expect(response.body.error.requestId).toEqual(expect.any(String))
     })
 
-    it('returns domain error codes from HttpError', async () => {
-      const response = await request(app).get('/api/test_error_500')
-
-      expect(response.status).toBe(500)
-      expect(response.body.error.code).toBe('TEST_ERROR')
-      expect(response.body.error.details).toEqual({
-        additionalInfo: expect.any(String),
+    it('returns structured details from HttpError responses', async () => {
+      getSessionMock.mockResolvedValue({
+        session: {
+          id: 'session-1',
+          createdAt: new Date('2026-04-10T12:00:00.000Z'),
+          updatedAt: new Date('2026-04-10T12:00:00.000Z'),
+          userId: 'user-1',
+          expiresAt: new Date('2026-04-11T12:00:00.000Z'),
+          token: 'token-1',
+          ipAddress: null,
+          userAgent: null,
+        },
+        user: {
+          id: 'user-1',
+          createdAt: new Date('2026-04-10T12:00:00.000Z'),
+          updatedAt: new Date('2026-04-10T12:00:00.000Z'),
+          email: 'user@example.com',
+          emailVerified: true,
+          name: 'Test User',
+          image: null,
+          role: 'user',
+          banned: false,
+          mustChangePassword: false,
+        },
       })
+
+      const response = await request(app).patch('/api/users/me/profile').set('Content-Type', 'multipart/form-data').field('removeAvatar', 'nope')
+
+      expect(response.status).toBe(400)
+      expect(response.body.error.code).toBe('validation_error')
+      expect(response.body.error.details).toEqual(
+        expect.objectContaining({
+          fieldErrors: expect.objectContaining({
+            removeAvatar: expect.any(Array),
+          }),
+        }),
+      )
       expect(response.body.error.requestId).toEqual(expect.any(String))
     })
 

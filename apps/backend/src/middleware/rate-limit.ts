@@ -1,71 +1,70 @@
-import type { NextFunction, Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import { ERROR_CODES } from '@repo/contracts'
+import { rateLimit } from 'express-rate-limit'
 
-import { HttpError } from '../lib/http-error.js'
+import { buildApiErrorResponse } from '../lib/api-error-response.js'
 import type { AuthLocals } from '../utils/auth-utils.js'
 
-type RateLimitBucket = {
-  count: number
-  resetAt: number
-}
-
-const buckets = new Map<string, RateLimitBucket>()
-
-const pruneExpiredBuckets = (now: number) => {
-  for (const [key, bucket] of buckets.entries()) {
-    if (bucket.resetAt <= now) {
-      buckets.delete(key)
-    }
-  }
-}
+const getIpAddress = (req: Request) => req.ip || req.socket.remoteAddress || 'unknown'
 
 export const createRateLimitMiddleware = ({
-  keyPrefix,
   max,
+  keyPrefix,
+  message = 'Too many requests',
   resolveKey,
   windowMs,
 }: {
   keyPrefix: string
   max: number
-  resolveKey: (req: Request, res: Response<unknown, AuthLocals>) => string | null | undefined
+  message?: string
+  resolveKey: (req: Request, res: Response<unknown, AuthLocals>) => string
   windowMs: number
 }) => {
-  return (req: Request, res: Response<unknown, AuthLocals>, next: NextFunction) => {
-    const resolvedKey = resolveKey(req, res)
-
-    if (!resolvedKey) {
-      next()
-      return
-    }
-
-    const now = Date.now()
-    pruneExpiredBuckets(now)
-
-    const bucketKey = `${keyPrefix}:${resolvedKey}`
-    const existingBucket = buckets.get(bucketKey)
-
-    if (!existingBucket || existingBucket.resetAt <= now) {
-      buckets.set(bucketKey, {
-        count: 1,
-        resetAt: now + windowMs,
-      })
-      next()
-      return
-    }
-
-    if (existingBucket.count >= max) {
-      next(new HttpError(429, ERROR_CODES.RATE_LIMITED, 'Too many requests'))
-      return
-    }
-
-    existingBucket.count += 1
-    next()
-  }
+  return rateLimit({
+    limit: max,
+    windowMs,
+    legacyHeaders: false,
+    standardHeaders: 'draft-8',
+    keyGenerator: (req) => `${keyPrefix}:${resolveKey(req, req.res as Response<unknown, AuthLocals>)}`,
+    handler: (req, res) => {
+      res.status(429).json(buildApiErrorResponse(req, ERROR_CODES.RATE_LIMITED, message))
+    },
+  })
 }
 
-export const authenticatedRouteRateLimit = createRateLimitMiddleware({
-  keyPrefix: 'authenticated-route',
+export const publicRouteRateLimit = createRateLimitMiddleware({
+  keyPrefix: 'public-route',
   max: 120,
   windowMs: 60_000,
-  resolveKey: (_req, res) => res.locals.auth?.user.id ?? null,
+  resolveKey: (req) => getIpAddress(req),
+})
+
+export const authenticatedReadRateLimit = createRateLimitMiddleware({
+  keyPrefix: 'authenticated-read',
+  max: 180,
+  windowMs: 60_000,
+  resolveKey: (_req, res) => res.locals.auth?.user.id ?? getIpAddress(_req),
+})
+
+export const superadminReadRateLimit = createRateLimitMiddleware({
+  keyPrefix: 'superadmin-read',
+  max: 120,
+  windowMs: 60_000,
+  resolveKey: (req, res) => res.locals.auth?.user.id ?? getIpAddress(req),
+})
+
+export const superadminMutationRateLimit = createRateLimitMiddleware({
+  keyPrefix: 'superadmin-mutation',
+  max: 30,
+  windowMs: 60_000,
+  message: 'Too many superadmin write requests',
+  resolveKey: (req, res) => res.locals.auth?.user.id ?? getIpAddress(req),
+})
+
+export const profileMutationRateLimit = createRateLimitMiddleware({
+  keyPrefix: 'profile-mutation',
+  max: 20,
+  windowMs: 5 * 60_000,
+  message: 'Too many profile updates',
+  resolveKey: (req, res) => res.locals.auth?.user.id ?? getIpAddress(req),
 })

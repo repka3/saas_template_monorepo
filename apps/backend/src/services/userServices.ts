@@ -11,6 +11,8 @@ import { HttpError } from '../lib/http-error.js'
 import { logger } from '../lib/logger.js'
 import { prisma } from '../lib/prisma.js'
 import { avatarDir, deleteUploadedFile } from '../middleware/upload-avatar.js'
+import { isServiceOrchestrationError, runServiceOrchestration } from './service-orchestration.js'
+import { assertCanPerformUserAction, type UserPolicyActor } from '../utils/authorization/user-policy.js'
 import type { UpdateProfileInput } from '../validation/user-profile.js'
 
 export const userSelect = {
@@ -54,7 +56,7 @@ export const superadminUserSelect = {
 type SuperadminUserRecord = Prisma.UserGetPayload<{ select: typeof superadminUserSelect }>
 
 interface SuperadminActionContext {
-  actorUserId: string
+  actor: UserPolicyActor
   requestHeaders: Headers
   requestId?: string
 }
@@ -172,56 +174,119 @@ export const listSuperadminUsers = async ({
 }
 
 export const createSuperadminUser = async (context: SuperadminActionContext, input: CreateUserInput): Promise<SuperadminUser> => {
+  assertCanPerformUserAction({
+    action: 'update',
+    actor: context.actor,
+    target: {
+      userId: context.actor.id,
+    },
+  })
+
+  let createdUserId: string | null = null
+  let createdUser: SuperadminUserRecord | null = null
+
   try {
     const role = input.role ?? 'user'
+    await runServiceOrchestration([
+      {
+        name: 'auth.createUser',
+        run: async () => {
+          const response = await auth.api.createUser({
+            body: {
+              email: normalizeEmail(input.email),
+              password: input.temporaryPassword,
+              name: input.name.trim(),
+              role,
+              data: {
+                mustChangePassword: true,
+              },
+            },
+            headers: context.requestHeaders,
+          })
 
-    const createdUser = await auth.api.createUser({
-      body: {
-        email: normalizeEmail(input.email),
-        password: input.temporaryPassword,
-        name: input.name.trim(),
-        role,
-        data: {
-          mustChangePassword: true,
+          createdUserId = response.user.id
         },
       },
-      headers: context.requestHeaders,
-    })
-
-    if (input.alreadyVerified) {
-      await auth.api.adminUpdateUser({
-        body: {
-          userId: createdUser.user.id,
-          data: {
-            emailVerified: true,
-          },
+      ...(input.alreadyVerified
+        ? [
+            {
+              name: 'auth.markEmailVerified',
+              run: async () => {
+                await auth.api.adminUpdateUser({
+                  body: {
+                    userId: createdUserId!,
+                    data: {
+                      emailVerified: true,
+                    },
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+              compensate: async () => {
+                await auth.api.adminUpdateUser({
+                  body: {
+                    userId: createdUserId!,
+                    data: {
+                      emailVerified: false,
+                    },
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+            },
+          ]
+        : []),
+      {
+        name: 'prisma.upsertProfile',
+        run: async () => {
+          await prisma.profile.upsert({
+            where: { userId: createdUserId! },
+            create: {
+              userId: createdUserId!,
+              firstName: input.firstName ?? null,
+              lastName: input.lastName ?? null,
+            },
+            update: {
+              firstName: input.firstName ?? null,
+              lastName: input.lastName ?? null,
+            },
+          })
         },
-        headers: context.requestHeaders,
-      })
-    }
-
-    await prisma.profile.upsert({
-      where: { userId: createdUser.user.id },
-      create: {
-        userId: createdUser.user.id,
-        firstName: input.firstName ?? null,
-        lastName: input.lastName ?? null,
       },
-      update: {
-        firstName: input.firstName ?? null,
-        lastName: input.lastName ?? null,
+      {
+        name: 'prisma.reloadCreatedUser',
+        run: async () => {
+          createdUser = await getSuperadminUserByIdOrNull(createdUserId!)
+
+          if (!createdUser) {
+            throw new Error('Failed to reload created user')
+          }
+        },
       },
-    })
+    ])
 
-    const user = await getSuperadminUserByIdOrNull(createdUser.user.id)
-
-    if (!user) {
-      throw new Error('Failed to reload created user')
-    }
-
-    return mapSuperadminUser(user)
+    return mapSuperadminUser(createdUser!)
   } catch (error) {
-    throw mapBetterAuthError(error) ?? error
+    const originalError = isServiceOrchestrationError(error) ? error.cause : error
+    const mappedError = mapBetterAuthError(originalError)
+
+    if (
+      isServiceOrchestrationError(error) &&
+      (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)
+    ) {
+      logger.error(
+        {
+          reqId: context.requestId,
+          actorUserId: context.actor.id,
+          targetUserId: createdUserId,
+          summary: error.summary,
+          err: originalError,
+        },
+        'Superadmin user creation partially succeeded before failing',
+      )
+    }
+
+    throw mappedError ?? originalError
   }
 }
 
@@ -232,11 +297,13 @@ export const updateSuperadminUser = async (context: SuperadminActionContext, use
     throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'User not found')
   }
 
-  if (input.disabled === true && context.actorUserId === userId) {
-    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'You cannot disable your own account')
-  }
-
-  const completedMutationSteps: string[] = []
+  assertCanPerformUserAction({
+    action: input.disabled === true ? 'disable' : 'update',
+    actor: context.actor,
+    target: {
+      userId,
+    },
+  })
 
   try {
     const nextEmail = input.email !== undefined ? normalizeEmail(input.email) : existingUser.email
@@ -244,119 +311,201 @@ export const updateSuperadminUser = async (context: SuperadminActionContext, use
     const nextName = input.name !== undefined ? input.name.trim() : existingUser.name
     const nameChanged = nextName !== existingUser.name
     const nextEmailVerified = input.emailVerified !== undefined ? input.emailVerified : emailChanged ? false : undefined
-
-    if (emailChanged || nameChanged || nextEmailVerified !== undefined) {
-      await auth.api.adminUpdateUser({
-        body: {
-          userId,
-          data: {
-            ...(emailChanged ? { email: nextEmail } : {}),
-            ...(nameChanged ? { name: nextName } : {}),
-            ...(nextEmailVerified !== undefined ? { emailVerified: nextEmailVerified } : {}),
-          },
-        },
-        headers: context.requestHeaders,
-      })
-      completedMutationSteps.push('adminUpdateUser')
-    }
-
-    if (input.temporaryPassword !== undefined) {
-      await auth.api.setUserPassword({
-        body: {
-          userId,
-          newPassword: input.temporaryPassword,
-        },
-        headers: context.requestHeaders,
-      })
-      completedMutationSteps.push('setUserPassword')
-
-      await auth.api.revokeUserSessions({
-        body: {
-          userId,
-        },
-        headers: context.requestHeaders,
-      })
-      completedMutationSteps.push('revokeUserSessions')
-
-      await auth.api.adminUpdateUser({
-        body: {
-          userId,
-          data: {
-            mustChangePassword: true,
-          },
-        },
-        headers: context.requestHeaders,
-      })
-      completedMutationSteps.push('adminUpdateUser:mustChangePassword')
-    }
-
-    if (input.disabled === true) {
-      await ensureAnotherActiveSuperadminRemains(existingUser)
-
-      await auth.api.banUser({
-        body: {
-          userId,
-          ...(input.disableReason !== undefined && input.disableReason !== null ? { banReason: input.disableReason } : {}),
-        },
-        headers: context.requestHeaders,
-      })
-      completedMutationSteps.push('banUser')
-    }
-
-    if (input.disabled === false) {
-      await auth.api.unbanUser({
-        body: { userId },
-        headers: context.requestHeaders,
-      })
-      completedMutationSteps.push('unbanUser')
-    }
-
+    const temporaryPassword = input.temporaryPassword
     const shouldUpsertProfile = input.firstName !== undefined || input.lastName !== undefined
+    let user: SuperadminUserRecord | null = null
 
-    const user = await prisma.$transaction(async (tx) => {
-      if (shouldUpsertProfile) {
-        await tx.profile.upsert({
-          where: { userId },
-          create: {
-            userId,
-            ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
-            ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
-          },
-          update: {
-            ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
-            ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
-          },
-        })
-      }
+    await runServiceOrchestration([
+      ...(emailChanged || nameChanged || nextEmailVerified !== undefined
+        ? [
+            {
+              name: 'auth.adminUpdateUser.identity',
+              run: async () => {
+                await auth.api.adminUpdateUser({
+                  body: {
+                    userId,
+                    data: {
+                      ...(emailChanged ? { email: nextEmail } : {}),
+                      ...(nameChanged ? { name: nextName } : {}),
+                      ...(nextEmailVerified !== undefined ? { emailVerified: nextEmailVerified } : {}),
+                    },
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+              compensate: async () => {
+                await auth.api.adminUpdateUser({
+                  body: {
+                    userId,
+                    data: {
+                      ...(emailChanged ? { email: existingUser.email } : {}),
+                      ...(nameChanged ? { name: existingUser.name } : {}),
+                      ...(nextEmailVerified !== undefined ? { emailVerified: existingUser.emailVerified } : {}),
+                    },
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+            },
+          ]
+        : []),
+      ...(temporaryPassword !== undefined
+        ? [
+            {
+              name: 'auth.setUserPassword',
+              run: async () => {
+                await auth.api.setUserPassword({
+                  body: {
+                    userId,
+                    newPassword: temporaryPassword,
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+            },
+            {
+              name: 'auth.revokeUserSessions',
+              run: async () => {
+                await auth.api.revokeUserSessions({
+                  body: {
+                    userId,
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+            },
+            {
+              name: 'auth.requirePasswordChange',
+              run: async () => {
+                await auth.api.adminUpdateUser({
+                  body: {
+                    userId,
+                    data: {
+                      mustChangePassword: true,
+                    },
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+            },
+          ]
+        : []),
+      ...(input.disabled === true
+        ? [
+            {
+              name: 'auth.banUser',
+              run: async () => {
+                await ensureAnotherActiveSuperadminRemains(existingUser)
 
-      return tx.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: superadminUserSelect,
-      })
-    })
+                await auth.api.banUser({
+                  body: {
+                    userId,
+                    ...(input.disableReason !== undefined && input.disableReason !== null ? { banReason: input.disableReason } : {}),
+                  },
+                  headers: context.requestHeaders,
+                })
+              },
+              compensate: existingUser.banned
+                ? async () => {
+                    await auth.api.banUser({
+                      body: {
+                        userId,
+                        ...(existingUser.banReason ? { banReason: existingUser.banReason } : {}),
+                      },
+                      headers: context.requestHeaders,
+                    })
+                  }
+                : async () => {
+                    await auth.api.unbanUser({
+                      body: { userId },
+                      headers: context.requestHeaders,
+                    })
+                  },
+            },
+          ]
+        : []),
+      ...(input.disabled === false
+        ? [
+            {
+              name: 'auth.unbanUser',
+              run: async () => {
+                await auth.api.unbanUser({
+                  body: { userId },
+                  headers: context.requestHeaders,
+                })
+              },
+              compensate: existingUser.banned
+                ? async () => {
+                    await auth.api.banUser({
+                      body: {
+                        userId,
+                        ...(existingUser.banReason ? { banReason: existingUser.banReason } : {}),
+                      },
+                      headers: context.requestHeaders,
+                    })
+                  }
+                : undefined,
+            },
+          ]
+        : []),
+      ...(shouldUpsertProfile
+        ? [
+            {
+              name: 'prisma.upsertProfile',
+              run: async () => {
+                await prisma.profile.upsert({
+                  where: { userId },
+                  create: {
+                    userId,
+                    ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
+                    ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
+                  },
+                  update: {
+                    ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
+                    ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
+                  },
+                })
+              },
+            },
+          ]
+        : []),
+      {
+        name: 'prisma.reloadUpdatedUser',
+        run: async () => {
+          user = await prisma.user.findUniqueOrThrow({
+            where: { id: userId },
+            select: superadminUserSelect,
+          })
+        },
+      },
+    ])
 
-    return mapSuperadminUser(user)
+    return mapSuperadminUser(user!)
   } catch (error) {
-    const mappedError = mapBetterAuthError(error)
+    const originalError = isServiceOrchestrationError(error) ? error.cause : error
+    const mappedError = mapBetterAuthError(originalError)
 
     if (mappedError) {
       throw mappedError
     }
 
-    if (completedMutationSteps.length > 0) {
+    if (
+      isServiceOrchestrationError(error) &&
+      (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)
+    ) {
       logger.error(
         {
           reqId: context.requestId,
-          actorUserId: context.actorUserId,
+          actorUserId: context.actor.id,
           targetUserId: userId,
-          completedMutationSteps,
-          err: error,
+          summary: error.summary,
+          err: originalError,
         },
         'Superadmin user update partially succeeded before failing',
       )
     }
 
-    throw error
+    throw originalError
   }
 }
 
@@ -367,9 +516,13 @@ export const updateSuperadminUserRole = async (context: SuperadminActionContext,
     throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'User not found')
   }
 
-  if (context.actorUserId === userId) {
-    throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'You cannot change your own role')
-  }
+  assertCanPerformUserAction({
+    action: 'change-role',
+    actor: context.actor,
+    target: {
+      userId,
+    },
+  })
 
   if (existingUser.role !== 'superadmin' && input.role === 'superadmin') {
     throw new HttpError(403, ERROR_CODES.FORBIDDEN, 'Superadmin role can only be assigned when a superadmin creates the account')
@@ -384,24 +537,66 @@ export const updateSuperadminUserRole = async (context: SuperadminActionContext,
   }
 
   try {
-    await auth.api.setRole({
-      body: {
-        userId,
-        role: input.role,
+    const previousRole = existingUser.role as UpdateUserRoleInput['role']
+    let user: SuperadminUserRecord | null = null
+
+    await runServiceOrchestration([
+      {
+        name: 'auth.setRole',
+        run: async () => {
+          await auth.api.setRole({
+            body: {
+              userId,
+              role: input.role,
+            },
+            headers: context.requestHeaders,
+          })
+        },
+        compensate: async () => {
+          await auth.api.setRole({
+            body: {
+              userId,
+              role: previousRole,
+            },
+            headers: context.requestHeaders,
+          })
+        },
       },
-      headers: context.requestHeaders,
-    })
+      {
+        name: 'prisma.reloadUserAfterRoleChange',
+        run: async () => {
+          user = await getSuperadminUserByIdOrNull(userId)
+
+          if (!user) {
+            throw new Error('Failed to reload user after role update')
+          }
+        },
+      },
+    ])
+
+    return mapSuperadminUser(user!)
   } catch (error) {
-    throw mapBetterAuthError(error) ?? error
+    const originalError = isServiceOrchestrationError(error) ? error.cause : error
+    const mappedError = mapBetterAuthError(originalError)
+
+    if (
+      isServiceOrchestrationError(error) &&
+      (error.summary.uncompensatedSteps.length > 0 || error.summary.compensationFailures.length > 0)
+    ) {
+      logger.error(
+        {
+          reqId: context.requestId,
+          actorUserId: context.actor.id,
+          targetUserId: userId,
+          summary: error.summary,
+          err: originalError,
+        },
+        'Superadmin role update partially succeeded before failing',
+      )
+    }
+
+    throw mappedError ?? originalError
   }
-
-  const user = await getSuperadminUserByIdOrNull(userId)
-
-  if (!user) {
-    throw new Error('Failed to reload user after role update')
-  }
-
-  return mapSuperadminUser(user)
 }
 
 const resolveAvatarDiskPath = (publicPath: string): string | null => {

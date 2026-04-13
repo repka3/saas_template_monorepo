@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import TopBar from '@/layouts/TopBar'
+import { SectionErrorBoundary } from '@/routes/route-error-boundary'
 import {
   Sidebar,
   SidebarContent,
@@ -67,7 +68,9 @@ export default function RoleShell({ homePath, navItems, roleLabel }: RoleShellPr
         <TopBar />
         <div className="flex flex-1 p-4 pt-3 md:p-6 md:pt-4">
           <div className="flex flex-1 rounded-[1.75rem] border border-foreground/10 bg-background/88 p-5 shadow-xl shadow-slate-950/6 backdrop-blur md:p-8">
-            <Outlet />
+            <SectionErrorBoundary homePath={homePath} scopeLabel={`${roleLabel} section`}>
+              <Outlet />
+            </SectionErrorBoundary>
           </div>
         </div>
       </SidebarInset>

@@ -217,22 +217,6 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('returns the centralized error envelope for GET /api/test_error_500', async () => {
-    const response = await request(app).get('/api/test_error_500')
-
-    expect(response.status).toBe(500)
-    expect(response.body).toEqual({
-      error: {
-        code: 'TEST_ERROR',
-        message: 'This is a test error meant to be handled by the frontend, depending on the page or situation.',
-        details: {
-          additionalInfo: 'This is a dummy error with additional structured information. It is mainly useful for verifying frontend error handling.',
-        },
-        requestId: expect.any(String),
-      },
-    })
-  })
-
   it('returns requestId for missing routes', async () => {
     const response = await request(app).get('/api/does-not-exist')
 

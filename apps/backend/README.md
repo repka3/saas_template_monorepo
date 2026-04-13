@@ -14,7 +14,7 @@ For stable backend implementation rules, see [AGENTS.md](./AGENTS.md). For the f
 
 ## Mental model
 
-The backend has five main layers:
+The backend has six main layers:
 
 1. `src/lib`
    Shared infrastructure and cross-cutting primitives.
@@ -26,6 +26,8 @@ The backend has five main layers:
    Thin HTTP handlers: read request data, call a service, return the response.
 5. `src/services`
    Business logic, Better Auth orchestration, Prisma queries, and domain invariants.
+6. `src/utils/authorization`
+   Policy helpers that evaluate actor, target, and action checks in one place.
 
 The default request flow is:
 
@@ -34,6 +36,16 @@ The default request flow is:
 If something fails:
 
 `throw HttpError / rejected promise -> errorHandler -> standard JSON error envelope`
+
+## Hardening conventions
+
+Future backend work should copy these conventions:
+
+- cross-system writes belong in services, not controllers
+- multi-step Better Auth + Prisma mutations should use explicit orchestration
+- compensation should only be attempted when rollback is actually safe
+- unrecoverable partial-success states must be logged with structured context
+- authorization decisions should be expressed as actor/target/action policy checks
 
 ## Boot and request flow
 
@@ -62,6 +74,17 @@ The important ordering in `src/app.ts` is deliberate:
 8. final `errorHandler`
 
 That Better Auth mount order matters. Better Auth documents that its handler should be mounted before `express.json()` on Express, and this backend follows that rule so auth endpoints keep working correctly.
+
+## Rate limiting baseline
+
+The starter no longer ships a custom in-memory route limiter.
+
+The supported baseline is:
+
+- Better Auth handles auth-route throttling on `/api/auth/*`
+- `express-rate-limit` handles normal Express routes
+- limits are configured per route class instead of one catch-all rule
+- Redis-backed shared storage is deferred until the app becomes multi-instance
 
 ## Avatar uploads and public URLs
 

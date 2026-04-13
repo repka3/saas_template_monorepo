@@ -49,4 +49,10 @@ describe('GET /api/auth-config', () => {
       },
     })
   })
+
+  it('does not expose the old public test error route', async () => {
+    const response = await request(app).get('/api/test_error_500')
+
+    expect(response.status).toBe(404)
+  })
 })

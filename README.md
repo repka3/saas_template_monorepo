@@ -1,97 +1,67 @@
-# SaaS Project Monorepo
+# SaaS Template Monorepo
 
-This repo is the base I use for my own SaaS projects.
+This repo is a lean SaaS starter, not a full platform. The supported baseline is intentionally small:
 
-For the last 10 years I kept rebuilding the same plumbing over and over:
-authentication, route protection, dashboard shells, role handling, email flows,
-backend wiring, and the usual project scaffolding. This
-repository is my attempt to keep that work in one place and evolve it in public.
+- one Express backend
+- one React dashboard
+- one Astro landing app
+- Better Auth for authentication flows
+- Prisma + PostgreSQL for persistence
+- same-origin dashboard and avatar delivery by default
 
-It is opinionated on purpose. A lot of choices here reflect personal taste:
-route structure, dashboard layout, naming, boundaries between apps, and the
-kind of baseline I like to start from. Contributions are welcome, but this is
-not meant to be an enterprise-grade, one-size-fits-all scaffolding kit.
+The goal is to keep the repo explicit and extendable without wrapping the core stack in a large custom framework.
 
-## Purpose
-
-The goal is to have a reusable starting point for building a SaaS product with:
-
-- a backend API
-- authentication and session handling
-- role-aware protected routes
-- a dashboard app
-- shared config packages
-- a monorepo setup that is easy to iterate on
-
-## What is currently in the repo
+## Supported Baseline
 
 ### Apps
 
 - `apps/backend`
-  - Express 5 API
-  - Better Auth mounted on `/api/auth/*`
-  - Prisma + PostgreSQL
-  - email/password auth
-  - email verification and password reset via SMTP
-  - env-driven bootstrap superadmin seed
-  - example protected and public routes
-
+  Express 5, Better Auth, Prisma, Zod validation, policy-based authorization, structured logging, and standard route rate limiting.
 - `apps/dashboard`
-  - Vite + React 19 app
-  - public auth routes: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
-  - protected areas for `USER` and `SUPERADMIN`
-  - role-aware redirects after authentication
-  - dashboard layout baseline and app-local `shadcn/ui` components
-
+  Vite + React 19 dashboard with guest/shared/user/superadmin route sections, lazy-loaded page entrypoints, and routed error boundaries.
 - `apps/landing`
-  - Astro app for the public marketing / landing site
-  - links visitors into the dashboard auth flow
-  - isolated from the authenticated product UI
+  Astro landing app for public marketing pages.
 
 ### Packages
 
+- `packages/contracts`
+  Shared auth roles and API contracts.
 - `packages/eslint-config`
-  - shared ESLint config
-
+  Shared ESLint config.
 - `packages/typescript-config`
-  - shared TypeScript config
+  Shared TypeScript config.
 
-### Tooling
+## Architecture Conventions
 
-- Turborepo
-- pnpm workspaces
-- Prisma
-- Vitest on the backend
+### Backend
 
-## Scope and expectations
+- Controllers stay thin.
+- Services own Better Auth and Prisma orchestration.
+- Authorization policies live under `apps/backend/src/utils/authorization`.
+- Multi-step service mutations should use explicit orchestration with compensation only where rollback is safe.
+- Better Auth handles `/api/auth/*`; normal API routes use `express-rate-limit`.
 
-This repo is public because I think the baseline can still be useful to other
-people, especially solo builders and small teams.
+### Dashboard
 
-That said:
+- `App.tsx` is top-level route composition only.
+- Auth pages live outside `App.tsx`.
+- Routes are grouped by guest, shared, user, and superadmin sections.
+- Non-root pages are lazy-loaded by default.
+- Error boundaries protect both the whole app and routed user/superadmin sections.
 
-- this is primarily my SaaS project foundation
-- it is intentionally opinionated
-- it may change in ways that fit my workflow first
-- it is useful as a reference or starting point, not as a promise of enterprise-ready abstractions
+## Quality Guardrails
 
-If you want to contribute, that is welcome. Just keep in mind the project is
-curated more like a personal product base than a neutral framework.
+CI now enforces the baseline verification set:
 
-## Workspace layout
+- `pnpm lint`
+- `pnpm check-types`
+- `pnpm --filter backend test`
+- `pnpm --filter dashboard test`
+- `pnpm build`
 
-```text
-apps/
-  backend/    Express + Better Auth + Prisma
-  landing/    Astro landing website
-  dashboard/  Vite + React dashboard
+See [.github/workflows/ci.yml](./.github/workflows/ci.yml).
 
-packages/
-  eslint-config/      shared lint config
-  typescript-config/  shared TS config
-```
-
-## Local setup
+## Local Setup
 
 1. Install dependencies.
 
@@ -99,7 +69,7 @@ packages/
 pnpm install
 ```
 
-2. Create local env files.
+2. Create env files.
 
 ```sh
 cp apps/backend/.env.example apps/backend/.env
@@ -113,7 +83,7 @@ cp apps/landing/.env.example apps/landing/.env
 docker compose -f docker-compose.localhost.yml up -d
 ```
 
-4. Run the Prisma migration and generate the client.
+4. Run Prisma and generate the client.
 
 ```sh
 pnpm --filter backend prisma:migrate
@@ -126,7 +96,7 @@ pnpm --filter backend prisma:generate
 pnpm --filter backend seed:superadmin
 ```
 
-6. Start the apps.
+6. Start the workspace.
 
 ```sh
 pnpm dev
@@ -138,86 +108,21 @@ Defaults:
 - landing: `http://localhost:4321`
 - dashboard: `http://localhost:5173`
 
-## Avatar Asset Contract
+## Deployment
 
-Avatar uploads are stored as browser-facing public paths such as
-`/uploads/avatars/<file>`, not as API-relative asset identifiers.
+Production Docker baselines are included for:
 
-That means:
+- `apps/backend/Dockerfile`
+- `apps/dashboard/Dockerfile`
+- `apps/landing/Dockerfile`
 
-- `VITE_API_URL` is used for API requests from the dashboard
-- avatar URLs are expected to resolve from the dashboard origin
-- local development uses the Vite `/uploads` proxy to mimic production
+The supported deployment contract is documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-The default production assumption for this repo is a single-server, same-origin
-deployment where nginx serves the dashboard and also serves `/uploads` directly
-from the backend uploads directory.
+## Deferred On Purpose
 
-Example nginx shape:
+These are intentionally outside the starter baseline for this pass:
 
-```nginx
-server {
-    server_name app.example.com;
-
-    location /uploads/ {
-        alias /srv/saas/uploads/;
-        expires 1h;
-        add_header Cache-Control "public";
-    }
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:3005;
-    }
-
-    location / {
-        root /srv/saas/dashboard;
-        try_files $uri /index.html;
-    }
-}
-```
-
-If you later split the frontend and backend across different origins, the
-avatar contract needs to change as well.
-
-## Mail setup
-
-The backend expects SMTP settings in `apps/backend/.env`.
-
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_USER`
-- `SMTP_PASS`
-- `SMTP_FROM`
-- `AUTH_SIGNUP_MODE` (`public` by default, or `admin_only`)
-- `SUPERADMIN_EMAIL`
-- `SUPERADMIN_PASSWORD`
-- `SUPERADMIN_NAME` (optional)
-
-The example values target a local SMTP catcher such as Mailpit or MailHog on
-port `1025`.
-
-Public registration is controlled by `AUTH_SIGNUP_MODE`:
-
-- `public`
-  - visitors can create standard `USER` accounts
-- `admin_only`
-  - public signup is disabled and accounts must be created by a superadmin
-
-## Seed behavior
-
-`pnpm --filter backend seed:superadmin` ensures the env-driven superadmin
-exists, promotes that account to `SUPERADMIN`, marks it verified, and clears
-any disabled or forced-password-change state on that bootstrap account.
-
-## Useful commands
-
-```sh
-pnpm dev
-pnpm build
-pnpm lint
-pnpm check-types
-pnpm --filter backend test
-pnpm --filter backend dev
-pnpm --filter landing dev
-pnpm --filter dashboard dev
-```
+- Stripe or billing integration
+- Redis-backed rate limiting
+- multi-instance upload storage
+- product-specific marketplace or organization systems beyond the current auth/role baseline
