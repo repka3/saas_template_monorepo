@@ -10,6 +10,8 @@ This backend is the reusable API baseline for the monorepo:
 
 The goal is not to hide those tools behind a large custom framework. The goal is to keep the project easy to extend, easy to upgrade, and explicit about where each responsibility lives.
 
+For stable backend implementation rules, see [AGENTS.md](./AGENTS.md). For the full controller/service error-handling policy, see [ERROR_HANDLING.md](./ERROR_HANDLING.md).
+
 ## Mental model
 
 The backend has five main layers:

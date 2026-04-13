@@ -3,10 +3,10 @@ import path from 'node:path'
 
 import { ERROR_CODES } from '@repo/contracts'
 import type { CreateUserInput, ListUsersResponse, SuperadminUser, UpdateUserInput, UpdateUserRoleInput } from '@repo/contracts'
-import { APIError } from 'better-auth'
 
 import type { Prisma } from '../generated/prisma/client.js'
 import { auth } from '../lib/auth.js'
+import { mapBetterAuthError } from '../lib/errors/better-auth-errors.js'
 import { HttpError } from '../lib/http-error.js'
 import { logger } from '../lib/logger.js'
 import { prisma } from '../lib/prisma.js'
@@ -111,24 +111,6 @@ const getSuperadminUserByIdOrNull = (id: string) =>
     where: { id },
     select: superadminUserSelect,
   })
-
-const mapBetterAuthError = (error: unknown): HttpError | undefined => {
-  if (!(error instanceof APIError)) {
-    return undefined
-  }
-
-  const errorCode = typeof error.body?.code === 'string' ? error.body.code : undefined
-
-  if (errorCode === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
-    return new HttpError(409, ERROR_CODES.CONFLICT, 'A user with this email already exists')
-  }
-
-  if (errorCode === 'USER_NOT_FOUND') {
-    return new HttpError(404, ERROR_CODES.NOT_FOUND, 'User not found')
-  }
-
-  return undefined
-}
 
 export const getUserById = (id: string) =>
   prisma.user.findUnique({
@@ -495,7 +477,7 @@ export const updateMyProfile = async (actorUserId: string, { input, avatarFile, 
     if (avatarFile) {
       await deleteUploadedFile(avatarFile.path)
     }
-    throw error
+    throw mapBetterAuthError(error) ?? error
   }
 
   const user = await prisma.user.findUniqueOrThrow({
