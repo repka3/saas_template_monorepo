@@ -1,243 +1,283 @@
-# Lean Starter Hardening Plan
+# Validated Hardening Plan
 
 ## Summary
 
-This repo is already a solid SaaS starter, but it still needs a short hardening pass before it becomes the right long-term base for a real product.
+This plan replaces the earlier broad hardening pass with a narrower, validated follow-up list.
 
-The goal of this plan is to improve what is already here, not turn the template into a full SaaS platform. The target baseline is:
+The scope here is based on:
 
-- a lean monorepo starter
-- a safe and scalable backend structure
-- a dashboard that can grow past the current page count without turning into a maintenance problem
-- in-repo quality and deployment guardrails
+- the current code in the repo
+- the gaps that are still real after the recent refactor
+- fixes that match the actual stack and deployment model
+- documented framework and infrastructure behavior where that affects correctness
+
+The goal is not to reopen every preference-level review comment. The goal is to close the gaps that are real, material, and still worth fixing.
 
 ## What This Plan Optimizes For
 
-- Keep the repo opinionated and practical.
-- Preserve the current single-server, same-origin deployment contract.
-- Fix structural issues that will slow down future work.
-- Avoid baking in product-specific systems too early.
+- Preserve the current lean starter contract.
+- Fix real cross-system failure gaps before adding more features.
+- Tighten the documented production baseline so it matches actual runtime behavior.
+- Improve reliability and clarity where the current code is easy to misread or partially fail.
 
-## Phase 1: Structural Hardening
+## Phase 1: Backend Correctness
 
-### 1. Backend service orchestration
+### 1. Close the orphaned-user gap in `createSuperadminUser`
 
-Refactor the current multi-step user-management flows into a clearer application-service pattern.
+The current orchestration creates a Better Auth user first and then writes profile data in Prisma. If the Prisma step fails, the auth user remains behind with no profile row.
+
+Current gap:
+
+- `apps/backend/src/services/userServices.ts`
+- `createSuperadminUser`
 
 Concrete work:
 
-- separate cross-system orchestration from raw Prisma access
-- make Better Auth mutations and Prisma mutations explicit steps
-- define a failure policy for partial success cases
-- add compensation where rollback is safe
-- add structured logging for unrecoverable partial-failure states
+- enable a supported Better Auth user-deletion path if that is the intended rollback mechanism
+- add a compensator for `auth.createUser` when rollback is safe and supported
+- if hard delete is intentionally not enabled, document the manual remediation path and log the partial-failure state explicitly
+- add a direct test for the partial-failure scenario
 
-Initial focus:
+Acceptance criteria:
+
+- a failed create flow does not silently leave an orphaned auth user without a clear rollback or remediation path
+- the failure mode is test-covered
+
+### 2. Harden `updateMyProfile` partial-failure handling
+
+`updateMyProfile` currently updates Better Auth image state and Prisma profile state in a flat flow. If one side succeeds and the other fails, the user can end up with inconsistent profile state.
+
+Current gap:
+
+- `apps/backend/src/services/userServices.ts`
+- `updateMyProfile`
+
+Concrete work:
+
+- make the cross-system steps explicit
+- define the failure policy for avatar updates and profile writes
+- if Better Auth image state changes before Prisma fails, either compensate safely or log a structured partial-failure event
+- keep uploaded-file cleanup in place for failed writes
+- add tests for avatar update failure paths
+
+Acceptance criteria:
+
+- self-service profile updates have an explicit partial-failure policy
+- auth state, Prisma state, and file cleanup behavior are test-covered
+
+### 3. Move superadmin survivability checks before orchestration
+
+Disabling the last active superadmin is already blocked, but one path performs the check inside an orchestration step instead of before the orchestration begins.
+
+Current gap:
+
+- `apps/backend/src/services/userServices.ts`
+- `updateSuperadminUser`
+
+Concrete work:
+
+- move `ensureAnotherActiveSuperadminRemains` out of the `auth.banUser` step and into a pre-check before orchestration starts
+- keep the existing pre-check shape used by `updateSuperadminUserRole`
+
+Acceptance criteria:
+
+- business-rule guards run before reversible mutation steps begin
+- failed preconditions do not enter orchestration unnecessarily
+
+### 4. Align partial-failure logging across user-management flows
+
+The create and update flows do not currently handle mapped errors the same way in their catch blocks. That makes partial-failure logging less consistent than it should be.
+
+Current gap:
 
 - `apps/backend/src/services/userServices.ts`
 
-Acceptance criteria:
-
-- `createSuperadminUser` and `updateSuperadminUser` no longer hide multi-step cross-system writes inside one large sequential flow
-- failure handling is explicit and test-covered
-- future backend services have a clear pattern to copy
-
-### 2. Authorization structure
-
-Expand the current authorization utilities into a small policy layer that can scale beyond the current user/self checks.
-
 Concrete work:
 
-- keep authorization rules in `apps/backend/src/utils/authorization`
-- define policy helpers around actor, target, and action
-- migrate current user/superadmin access checks to the new pattern
+- use one catch-block pattern for create, update, and role-change flows
+- log partial-failure summaries before returning mapped HTTP errors
+- keep Better Auth error mapping behavior intact
 
 Acceptance criteria:
 
-- authorization logic is not spread ad hoc through controllers and services
-- the current rules are centralized and test-covered
+- partial cross-system failures are logged consistently across the superadmin service flows
+- mapped errors do not suppress useful operational logging
 
-### 3. Remove debug-only production surface
+## Phase 2: Authorization Clarity
 
-The public test 500 route should not ship as normal production behavior.
+### 5. Make the user policy boundary explicit
+
+Authorization was successfully centralized, but the current policy API is easy to misread as a universal gate for every user mutation. Self-service profile updates are intentionally outside that `update` action.
+
+Current gap:
+
+- `apps/backend/src/utils/authorization/user-policy.ts`
+- `apps/backend/src/controllers/userControllers.ts`
 
 Concrete work:
 
-- remove `/api/test_error_500` entirely, or
-- register it only in development and test environments
+- either document that `patchMyProfileController` is a separate self-service path
+- or add an explicit action such as `update-own-profile`
+- tighten switch exhaustiveness with a `never` assertion instead of silent `default` fallbacks
 
 Acceptance criteria:
 
-- production does not expose an intentional crash endpoint
+- future contributors can tell which mutations are admin-managed and which are self-service
+- adding a new policy action causes TypeScript to flag missing switch cases
 
-## Phase 2: Dashboard Scalability
+## Phase 3: Frontend Reliability
 
-### 4. Split `App.tsx` into route modules and page modules
+### 6. Add application-owned logging for caught render errors
 
-The dashboard currently keeps too much routing and page logic in one file.
+The dashboard now has error boundaries, but the boundary implementation does not report caught errors anywhere.
+
+Current gap:
+
+- `apps/dashboard/src/routes/route-error-boundary.tsx`
 
 Concrete work:
 
-- keep `App.tsx` focused on top-level route composition
-- move auth pages into their own files
-- group routes by guest, shared, user, and superadmin sections
-- move page-specific state and form logic closer to feature boundaries
+- implement `componentDidCatch(error, info)` to log caught render errors
+- wire the handler to an error-reporting service later if the starter gains one
+- keep the existing fallback UI behavior
 
-Initial focus:
+Acceptance criteria:
+
+- caught render failures are visible in app-owned logging
+- the boundary keeps the current recovery UX
+
+### 7. Fix small routed-UI reliability issues
+
+These are not structural blockers, but they are real cleanup items and they affect polish and correctness.
+
+Current gaps:
+
+- `apps/dashboard/src/routes/auth-pages.tsx`
+- `apps/dashboard/src/routes/route-error-boundary.tsx`
+
+Concrete work:
+
+- clean up the delayed redirect timeout in `ResetPasswordPage` so it cannot fire after unmount
+- change the app-level error boundary retry label so it matches the actual scope
+
+Acceptance criteria:
+
+- the reset-password route does not leave an uncontrolled timer behind
+- app-level fallback copy matches the boundary scope
+
+### 8. Treat route-level Suspense refinement as UX polish, not as a failed baseline
+
+Lazy loading is already in place and meets the original baseline. The remaining issue is user experience: the top-level Suspense boundary can replace the shell during lazy loads.
+
+Current gap:
 
 - `apps/dashboard/src/App.tsx`
-- `apps/dashboard/src/pages/superadmin/SuperadminUsersPage.tsx`
-- `apps/dashboard/src/pages/superadmin/SuperadminUserDetailPage.tsx`
-
-Acceptance criteria:
-
-- `App.tsx` becomes a small composition file
-- auth pages are not defined inline
-- large page files are decomposed into feature-level components and hooks
-
-### 5. Lazy loading and route-level code splitting
-
-The dashboard build already emits a large single JS bundle. Page entrypoints should be lazy-loaded before the app grows further.
 
 Concrete work:
 
-- lazy-load non-root page entrypoints with `React.lazy`
-- wrap route sections with `Suspense` fallbacks
-- keep loading states simple and consistent with the existing UI
+- move Suspense boundaries closer to routed content where that improves UX
+- keep the current route-splitting approach
 
 Acceptance criteria:
 
-- the dashboard no longer ships as one monolithic route bundle
-- new pages follow the same lazy-loaded route pattern by default
+- route-level code splitting remains the default
+- loading a child route does not unnecessarily blank the whole shell
 
-### 6. Add React error boundaries
+## Phase 4: Delivery Baseline
 
-The current dashboard has no error boundary around routed UI.
+### 9. Fix the documented nginx upload limit
+
+The production deployment guide currently omits `client_max_body_size` in the reverse-proxy example. The backend allows avatar uploads above nginx's default body-size limit.
+
+Current gap:
+
+- `DEPLOYMENT.md`
 
 Concrete work:
 
-- add a top-level route error boundary
-- add section-level boundaries for user and superadmin areas
-- use a simple fallback UI that preserves navigation context where possible
+- add `client_max_body_size` to the `/api/` proxy example
+- keep the documented value aligned with `MAX_AVATAR_UPLOAD_BYTES`
+- add a short TLS note so the example is not read as a complete production edge configuration
 
 Acceptance criteria:
 
-- a render failure in one section does not blank the entire app
-- the fallback state is test-covered
+- the documented reverse-proxy shape does not reject valid avatar uploads by default
+- deployment docs match the supported same-origin upload contract
 
-### 7. Improve frontend test coverage
+### 10. Add Docker build-context hygiene
 
-The dashboard test baseline is too small for a reusable starter.
+The repo currently ships Dockerfiles without `.dockerignore` files, and the backend runtime stage copies the full build workspace into the runtime image.
+
+Current gaps:
+
+- no `.dockerignore` files present
+- `apps/backend/Dockerfile`
 
 Concrete work:
 
-- add auth routing and redirect tests
-- add protected route tests
-- add superadmin list/detail flow tests
-- add profile/avatar flow tests
-- add error-boundary rendering tests
+- add `.dockerignore` coverage for the Docker build contexts used by this repo
+- exclude `.git`, local dependency folders, build artifacts, temp upload directories, and test-only artifacts from the build context
+- narrow the backend runtime `COPY --from=build` to the runtime files the backend actually needs
 
 Acceptance criteria:
 
-- risky dashboard flows have direct test coverage
-- frontend regressions are more likely to be caught before merge
+- Docker builds stop sending unnecessary local context
+- the backend runtime image no longer contains the full build workspace by default
 
-## Phase 3: Delivery Guardrails
+### 11. Sync documentation with the actual deferred scope
 
-### 8. Replace the custom rate limiter with a standard layered setup
+The root README deferred-items list no longer matches the current hardening plan and deployment docs.
 
-The current `Map`-based middleware should be removed. The starter should use the standard split between auth-route protection and normal Express-route protection.
+Current gap:
+
+- `README.md`
 
 Concrete work:
 
-- rely on Better Auth built-in rate limiting for `/api/auth/*`
-- replace the custom Express `Map` limiter with `express-rate-limit` for non-auth routes
-- configure route-specific limits instead of one generic policy
-- use IP-based limits for anonymous traffic and authenticated-user-based keys where appropriate
-- configure Express proxy handling correctly for reverse-proxy deployments
-- defer Redis-backed storage until the deployment becomes multi-instance or horizontally scaled
-- when shared storage is needed, use a standard store such as `rate-limit-redis` rather than a homegrown abstraction
+- update the deferred list to match the intentionally unsupported baseline
+- include the items that are still explicitly deferred rather than partially implied
 
 Acceptance criteria:
 
-- the repo no longer ships a custom in-memory rate limiter implementation
-- Better Auth handles auth endpoint throttling
-- normal API routes use a standard, well-supported Express rate-limiting library
-- the upgrade path to Redis is documented but not required for the default starter
+- the README, deployment docs, and plan describe the same supported baseline
 
-### 9. CI in the repo
+## Phase 5: Test Coverage Follow-Through
 
-The repo already has good checks, but they are not enforced in CI.
+### 12. Add direct tests for the risky paths that remain
 
-Concrete work:
+The repo has a much better baseline than before, but the remaining risk is concentrated in a few untested failure and recovery paths.
 
-- add a GitHub Actions workflow that runs:
-  - `pnpm lint`
-  - `pnpm check-types`
-  - `pnpm --filter backend test`
-  - `pnpm --filter dashboard test`
-  - `pnpm build`
+Priority test additions:
 
-Acceptance criteria:
-
-- every pull request runs the same baseline checks automatically
-
-### 10. Production deployment baseline
-
-The repo should include a minimal production deployment shape that matches the current architecture.
-
-Concrete work:
-
-- add production Dockerfiles for `backend`, `dashboard`, and `landing`
-- document the expected reverse-proxy setup
-- keep `/uploads` same-origin with the dashboard
-- document the current supported deployment contract clearly
+- unit tests for `service-orchestration.ts`
+- `createSuperadminUser` partial-failure coverage
+- `updateMyProfile` partial-failure coverage
+- broader `user-policy.ts` action coverage
+- frontend tests for the currently smoke-only superadmin and profile flows
+- optional coverage thresholds in dashboard Vitest config once the current floor is acceptable
 
 Acceptance criteria:
 
-- deployment expectations are explicit in-repo
-- the documented production shape matches the current avatar/file contract
+- the repo directly tests the cross-system failure paths that are easiest to regress
+- coverage settings, if added, reflect an intentional floor rather than a token threshold
 
-### 11. Documentation cleanup
+## Explicitly Out of Scope For This Pass
 
-The docs should clearly separate built-in baseline behavior from deferred extensions.
-
-Concrete work:
-
-- update `README.md` to reflect the supported starter baseline
-- document what is intentionally deferred
-- document the recommended architecture conventions introduced by this plan
-
-Acceptance criteria:
-
-- a new contributor can tell what the template supports out of the box
-- future extensions have clear boundaries
-
-## Explicitly Deferred
-
-These items should not be treated as baseline requirements for this pass:
-
-- Stripe or billing integration
-- organizations or multi-tenancy
-- background job infrastructure
+- replacing the current auth provider
+- introducing Redis or multi-instance coordination as baseline infrastructure
 - object storage abstraction for uploads
-- full OpenAPI/Swagger generation
-- a general development data seeding system beyond the bootstrap superadmin
-
-These may be added later when a real product needs them.
-
-## Notes From Review Consolidation
-
-- Keep the current avatar path contract. Same-origin `/uploads` is valid for the documented deployment model.
-- Do not add a new pagination system. The repo already has reusable pagination primitives; the real need is better page decomposition and reuse.
-- Treat the dashboard structure and backend orchestration gaps as the highest-value work.
+- broad nginx hardening beyond the documented baseline contract
+- adding product-specific billing, organizations, or job systems
+- refactoring purely stylistic duplication unless it materially helps a validated fix
 
 ## Exit Criteria
 
 This plan is complete when:
 
-- backend cross-system mutations have an explicit, test-covered pattern
-- dashboard routing is modular, lazy-loaded, and protected by error boundaries
-- frontend coverage includes the main auth and admin flows
-- CI runs the existing quality gates automatically
-- the repo documents a supported production deployment baseline
+- cross-system backend mutations have explicit rollback or remediation behavior where needed
+- self-service profile updates have a defined partial-failure policy
+- authorization boundaries are explicit and exhaustively typed
+- caught render errors are visible to operators
+- deployment docs no longer contradict backend upload behavior
+- Docker build inputs and runtime image contents are intentionally scoped
+- tests cover the remaining risky mutation and recovery paths
