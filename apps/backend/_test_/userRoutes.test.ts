@@ -4,6 +4,30 @@ import path from 'node:path'
 import request from 'supertest'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Minimal CRC32 for building valid PNG test fixtures
+const CRC_TABLE = (() => {
+  const table: number[] = []
+  for (let n = 0; n < 256; n++) {
+    let c = n
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    }
+    table[n] = c
+  }
+  return table
+})()
+
+function crc32(buf: Buffer): Buffer {
+  let crc = ~0
+  for (let i = 0; i < buf.length; i++) {
+    crc = CRC_TABLE[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8)
+  }
+  crc = ~crc >>> 0
+  const result = Buffer.alloc(4)
+  result.writeUInt32BE(crc, 0)
+  return result
+}
+
 Object.assign(process.env, {
   NODE_ENV: 'test',
   PORT: '3007',
@@ -57,6 +81,7 @@ const uploadsRoot = path.resolve('.tmp/test-uploads-user-routes')
 const avatarUploadsDir = path.join(uploadsRoot, 'avatars')
 const fixturesDir = path.resolve('.tmp/test-user-route-fixtures')
 const validAvatarFixture = path.join(fixturesDir, 'avatar.png')
+const webpAvatarFixture = path.join(fixturesDir, 'avatar.webp')
 const invalidAvatarFixture = path.join(fixturesDir, 'avatar.txt')
 const oversizedAvatarFixture = path.join(fixturesDir, 'avatar-oversized.png')
 
@@ -161,9 +186,43 @@ const listUploadedAvatars = async (): Promise<string[]> => {
 
 beforeAll(async () => {
   await fs.mkdir(fixturesDir, { recursive: true })
-  await fs.writeFile(validAvatarFixture, Buffer.from('avatar-png-fixture'))
+  // Minimal PNG: 8-byte signature + IHDR chunk + IEND chunk
+  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  const ihdrData = Buffer.alloc(13)
+  ihdrData.writeUInt32BE(1, 0) // width
+  ihdrData.writeUInt32BE(1, 4) // height
+  ihdrData[8] = 8 // bit depth
+  ihdrData[9] = 2 // color type (RGB)
+  ihdrData[10] = 0 // compression
+  ihdrData[11] = 0 // filter
+  ihdrData[12] = 0 // interlace
+  const ihdrCrc = crc32(Buffer.concat([Buffer.from('IHDR'), ihdrData]))
+  const ihdr = Buffer.concat([
+    Buffer.from([0x00, 0x00, 0x00, 0x0d]),
+    Buffer.from('IHDR'),
+    ihdrData,
+    ihdrCrc,
+  ])
+  const iendCrc = crc32(Buffer.from('IEND'))
+  const iend = Buffer.concat([Buffer.from([0x00, 0x00, 0x00, 0x00]), Buffer.from('IEND'), iendCrc])
+  const minimalPng = Buffer.concat([pngSignature, ihdr, iend])
+  await fs.writeFile(validAvatarFixture, minimalPng)
+
+  // Minimal WEBP: RIFF header + WEBP file header
+  const riffHeader = Buffer.from('RIFF')
+  const webpMarker = Buffer.from('WEBP')
+  const webpContent = Buffer.alloc(4, 0)
+  const webpSize = Buffer.alloc(4)
+  webpSize.writeUInt32LE(webpMarker.length + webpContent.length, 0)
+  const minimalWebp = Buffer.concat([riffHeader, webpSize, webpMarker, webpContent])
+  await fs.writeFile(webpAvatarFixture, minimalWebp)
+
   await fs.writeFile(invalidAvatarFixture, Buffer.from('avatar-text-fixture'))
-  await fs.writeFile(oversizedAvatarFixture, Buffer.alloc(2_097_153, 'a'))
+
+  // Oversized fixture needs valid PNG magic bytes at the start
+  const oversized = Buffer.alloc(2_097_153)
+  minimalPng.copy(oversized)
+  await fs.writeFile(oversizedAvatarFixture, oversized)
 })
 
 afterAll(async () => {
@@ -680,7 +739,7 @@ describe('PATCH /api/users/me/profile', () => {
 
     const response = await request(app)
       .patch('/api/users/me/profile')
-      .attach('avatar', validAvatarFixture, { filename: 'avatar.webp', contentType: 'image/webp' })
+      .attach('avatar', webpAvatarFixture, { filename: 'avatar.webp', contentType: 'image/webp' })
 
     expect(response.status).toBe(200)
     expect(response.body.user.image).toBe('/uploads/avatars/synced-avatar.webp')

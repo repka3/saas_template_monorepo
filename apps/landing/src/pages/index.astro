@@ -1,5 +1,9 @@
 ---
-const dashboardBaseUrl = (import.meta.env.PUBLIC_DASHBOARD_URL || 'http://localhost:5173').replace(/\/$/, '')
+const rawDashboardUrl = import.meta.env.PUBLIC_DASHBOARD_URL?.trim()
+if (!rawDashboardUrl && import.meta.env.PROD) {
+  throw new Error('PUBLIC_DASHBOARD_URL is required in production builds. Set it to your dashboard URL (e.g. https://app.example.com).')
+}
+const dashboardBaseUrl = (rawDashboardUrl || 'http://localhost:5173').replace(/\/$/, '')
 const loginUrl = new URL('/login', `${dashboardBaseUrl}/`).toString()
 ---
 

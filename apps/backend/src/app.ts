@@ -76,8 +76,11 @@ app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT, para
 app.use('/uploads/avatars', express.static(avatarDir))
 
 app.use('/api', publicHealthRouter)
-app.use('/api', dummyPrivateRouter)
 app.use('/api', userRouter)
+
+if (env.NODE_ENV !== 'production') {
+  app.use('/api', dummyPrivateRouter)
+}
 
 app.use((req, res) => {
   res.status(404).json(buildApiErrorResponse(req, ERROR_CODES.NOT_FOUND, 'Route not found'))

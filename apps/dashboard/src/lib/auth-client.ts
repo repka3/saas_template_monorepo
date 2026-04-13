@@ -18,9 +18,11 @@ const additionalFields = {
   },
 } as const
 
-const rawApiBaseUrl = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3005'
-
-const apiBaseUrl = rawApiBaseUrl.replace(/\/$/, '')
+const rawApiBaseUrl = import.meta.env.VITE_API_URL?.trim()
+if (!rawApiBaseUrl && import.meta.env.PROD) {
+  throw new Error('VITE_API_URL is required in production builds. Set it to your backend URL (e.g. https://api.example.com).')
+}
+const apiBaseUrl = (rawApiBaseUrl || 'http://localhost:3005').replace(/\/$/, '')
 
 export const authClient = createAuthClient({
   baseURL: `${apiBaseUrl}/api/auth`,

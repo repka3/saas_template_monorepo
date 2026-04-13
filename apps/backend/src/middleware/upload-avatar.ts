@@ -15,6 +15,20 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
   'image/webp': '.webp',
 }
 
+/**
+ * Magic-byte signatures for each allowed image type.
+ * Keys are the MIME type; values are { offset, bytes } describing the
+ * expected byte sequence at a fixed position in the file header.
+ */
+const FILE_SIGNATURES: Record<string, Array<{ offset: number; bytes: number[] }>> = {
+  'image/jpeg': [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }],
+  'image/png': [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }],
+  'image/webp': [
+    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+    { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // WEBP
+  ],
+}
+
 const avatarDir = path.resolve(env.UPLOADS_DIR, 'avatars')
 
 const storage = multer.diskStorage({
@@ -52,6 +66,25 @@ const avatarUpload = multer({
   },
 }).single('avatar')
 
+async function validateFileSignature(filePath: string, mimeType: string): Promise<boolean> {
+  const sigs = FILE_SIGNATURES[mimeType]
+  if (!sigs) return false
+
+  let handle: fs.FileHandle | null = null
+  try {
+    handle = await fs.open(filePath, 'r')
+    const maxLen = Math.max(...sigs.map((s) => s.offset + s.bytes.length))
+    const buf = Buffer.alloc(maxLen)
+    await handle.read(buf, 0, maxLen, 0)
+
+    return sigs.every((sig) => sig.bytes.every((expected, i) => buf[sig.offset + i] === expected))
+  } catch {
+    return false
+  } finally {
+    await handle?.close()
+  }
+}
+
 export const uploadAvatar: RequestHandler = (req, res, next) => {
   avatarUpload(req, res, (error) => {
     void (async () => {
@@ -59,7 +92,21 @@ export const uploadAvatar: RequestHandler = (req, res, next) => {
         await deleteUploadedFile(req.file.path)
       }
 
-      next(error)
+      if (error) {
+        next(error)
+        return
+      }
+
+      if (req.file) {
+        const valid = await validateFileSignature(req.file.path, req.file.mimetype)
+        if (!valid) {
+          await deleteUploadedFile(req.file.path)
+          next(new HttpError(400, ERROR_CODES.VALIDATION_ERROR, 'File content does not match an allowed image type'))
+          return
+        }
+      }
+
+      next()
     })()
   })
 }
