@@ -138,6 +138,47 @@ Defaults:
 - landing: `http://localhost:4321`
 - dashboard: `http://localhost:5173`
 
+## Avatar Asset Contract
+
+Avatar uploads are stored as browser-facing public paths such as
+`/uploads/avatars/<file>`, not as API-relative asset identifiers.
+
+That means:
+
+- `VITE_API_URL` is used for API requests from the dashboard
+- avatar URLs are expected to resolve from the dashboard origin
+- local development uses the Vite `/uploads` proxy to mimic production
+
+The default production assumption for this repo is a single-server, same-origin
+deployment where nginx serves the dashboard and also serves `/uploads` directly
+from the backend uploads directory.
+
+Example nginx shape:
+
+```nginx
+server {
+    server_name app.example.com;
+
+    location /uploads/ {
+        alias /srv/saas/uploads/;
+        expires 1h;
+        add_header Cache-Control "public";
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3005;
+    }
+
+    location / {
+        root /srv/saas/dashboard;
+        try_files $uri /index.html;
+    }
+}
+```
+
+If you later split the frontend and backend across different origins, the
+avatar contract needs to change as well.
+
 ## Mail setup
 
 The backend expects SMTP settings in `apps/backend/.env`.

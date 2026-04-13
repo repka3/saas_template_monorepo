@@ -45,7 +45,10 @@ export async function apiFetch<T = unknown>(path: string, init?: RequestInit): P
 
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+\-.]*:\/\//i
 
-export function resolveAssetUrl(path: string | null | undefined): string | undefined {
+// Avatar values are stored as browser-facing public paths, not API-relative asset keys.
+// In the default deployment contract, `/uploads/...` is served from the same origin
+// as the dashboard, while local development simulates that with the Vite proxy.
+export function normalizePublicAssetUrl(path: string | null | undefined): string | undefined {
   const trimmedPath = path?.trim()
 
   if (!trimmedPath) return undefined

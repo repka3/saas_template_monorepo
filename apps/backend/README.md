@@ -63,6 +63,25 @@ The important ordering in `src/app.ts` is deliberate:
 
 That Better Auth mount order matters. Better Auth documents that its handler should be mounted before `express.json()` on Express, and this backend follows that rule so auth endpoints keep working correctly.
 
+## Avatar uploads and public URLs
+
+Avatar uploads are persisted on local disk under `UPLOADS_DIR/avatars`, and the
+auth user `image` field stores a browser-facing public path such as
+`/uploads/avatars/<file>`.
+
+That contract is intentional:
+
+- the backend stores a public path, not an API-relative asset key
+- the dashboard renders that value as a public URL/path directly
+- `src/app.ts` mounts `express.static()` on `/uploads/avatars` as the backend
+  fallback and local-dev implementation
+- in production, nginx can terminate `/uploads` directly instead of forwarding
+  avatar reads through the backend app
+
+The default template assumes a same-origin deployment for dashboard pages and
+public avatar assets. If you move to split frontend/backend origins or multiple
+app instances, this contract is no longer sufficient on its own.
+
 ## Why `src/lib` exists
 
 `src/lib` is for shared infrastructure, not for feature logic.

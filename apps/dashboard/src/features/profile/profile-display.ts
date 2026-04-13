@@ -1,4 +1,4 @@
-import { resolveAssetUrl } from '@/lib/api-client'
+import { normalizePublicAssetUrl } from '@/lib/api-client'
 
 import type { UserProfile } from './profile-types'
 
@@ -28,5 +28,5 @@ export function getProfileDisplayInitial(user: DisplayUser, profile: UserProfile
 
 export function getProfileDisplayAvatarUrl(user: DisplayUser, profile: UserProfile | null | undefined): string | null {
   void profile
-  return resolveAssetUrl(user.image ?? null) ?? null
+  return normalizePublicAssetUrl(user.image ?? null) ?? null
 }

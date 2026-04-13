@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveAssetUrl } from './api-client'
+import { normalizePublicAssetUrl } from './api-client'
 
-describe('resolveAssetUrl', () => {
+describe('normalizePublicAssetUrl', () => {
   it('returns undefined for empty avatar values', () => {
-    expect(resolveAssetUrl(undefined)).toBeUndefined()
-    expect(resolveAssetUrl(null)).toBeUndefined()
-    expect(resolveAssetUrl('   ')).toBeUndefined()
+    expect(normalizePublicAssetUrl(undefined)).toBeUndefined()
+    expect(normalizePublicAssetUrl(null)).toBeUndefined()
+    expect(normalizePublicAssetUrl('   ')).toBeUndefined()
   })
 
-  it('keeps local upload paths root-relative', () => {
-    expect(resolveAssetUrl('/uploads/avatars/x.png')).toBe('/uploads/avatars/x.png')
+  it('keeps same-origin public upload paths unchanged', () => {
+    expect(normalizePublicAssetUrl('/uploads/avatars/x.png')).toBe('/uploads/avatars/x.png')
   })
 
   it('leaves absolute urls unchanged', () => {
-    expect(resolveAssetUrl('https://bucket.s3.amazonaws.com/x.png')).toBe('https://bucket.s3.amazonaws.com/x.png')
+    expect(normalizePublicAssetUrl('https://bucket.s3.amazonaws.com/x.png')).toBe('https://bucket.s3.amazonaws.com/x.png')
   })
 })

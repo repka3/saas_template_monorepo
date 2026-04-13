@@ -8,6 +8,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
+      // Local dev mirrors the production same-origin contract where nginx serves
+      // `/uploads` from the frontend origin.
       '/uploads': 'http://localhost:3005',
     },
   },
