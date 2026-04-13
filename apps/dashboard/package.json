@@ -4,11 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @repo/contracts build",
     "dev": "vite",
+    "prebuild": "pnpm --filter @repo/contracts build",
     "build": "tsc -b && vite build",
     "check-types": "tsc -b --pretty false",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
+    "pretest": "pnpm --filter @repo/contracts build",
     "test": "vitest run"
   },
   "dependencies": {

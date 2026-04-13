@@ -3,10 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @repo/contracts build",
     "dev": "tsx watch src/server.ts",
+    "prebuild": "pnpm --filter @repo/contracts build",
     "build": "pnpm prisma:generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "eslint . --max-warnings 0",
+    "pretest": "pnpm --filter @repo/contracts build",
     "test": "vitest run",
     "check-types": "pnpm prisma:generate && tsc --noEmit -p tsconfig.json",
     "prisma:generate": "prisma generate --config prisma.config.ts",
