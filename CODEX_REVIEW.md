@@ -25,13 +25,23 @@ The following checks were run successfully:
 
 ## Findings
 
-### 1. Avatar assets are not safe across separate frontend/backend origins
+### 1. Avatar asset handling is valid for the documented same-origin deployment
 
-Severity: High
+Severity: Clarification
 
-The backend stores user images as root-relative paths like `/uploads/avatars/...`, and the dashboard preserves them as root-relative URLs.
+The backend stores user images as root-relative public paths like `/uploads/avatars/...`, and the dashboard preserves them as root-relative URLs.
 
-That means the browser resolves them against the dashboard origin, not the backend/API origin. With the current split local setup (`5173` dashboard, `3005` backend), this is already fragile and will break unless both apps are served behind the same host.
+That is acceptable for this template's documented deployment contract:
+
+- production serves the dashboard and `/uploads` from the same origin, typically via nginx
+- local development uses the Vite `/uploads` proxy to simulate that setup
+
+Under that assumption, the browser should resolve avatar URLs against the dashboard origin and receive the files from nginx, which is a valid and cache-friendly setup.
+
+This only becomes a real issue if the template later moves to:
+
+- separate frontend/backend origins, or
+- multiple app instances with local-only disk storage
 
 Relevant files:
 
@@ -123,10 +133,11 @@ That is not fatal for a starter, but it is missing from a production-ready base 
 
 Before building product-specific features, the template should be stabilized with the following base additions.
 
-### A. Fix asset URL handling
+### A. Keep the asset URL contract explicit
 
-- resolve backend-served assets against the API origin or a dedicated asset origin
-- do not rely on root-relative paths resolving correctly from the dashboard origin
+- keep `user.image` as a browser-facing public path
+- keep `/uploads` same-origin with the dashboard in production
+- revisit asset resolution only if the deployment changes to split origins or a dedicated asset host
 
 ### B. Introduce a safer application-service pattern for multi-step backend flows
 

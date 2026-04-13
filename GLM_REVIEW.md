@@ -53,9 +53,11 @@ Login, Register, ForgotPassword, ResetPassword, VerifyEmail, RegistrationDisable
 
 If any page throws during render (bad data, missing prop, network error), the entire app goes white screen. At minimum wrap route outlets with an `ErrorBoundary`. Ideally add per-section boundaries so a crash in one area doesn't kill the whole UI.
 
-### 4. File Uploads Go to Local Disk
+### 4. File Uploads Are Coupled to a Single-Server Deployment
 
-`upload-avatar.ts` writes to the filesystem. This will not work in any containerized or multi-instance deployment. Abstract storage behind an interface (S3, R2, GCS) now so every future upload (documents, exports, whatever the SaaS needs) uses the same backend.
+`upload-avatar.ts` writes to the filesystem. Under the documented deployment contract for this template — a single server with nginx serving `/uploads` on the same origin as the dashboard — that is acceptable and not an immediate problem.
+
+It becomes a real limitation only if the project moves to containerized or multi-instance deployments where local disk is no longer shared. At that point, abstract storage behind an interface (S3, R2, GCS) so every future upload (documents, exports, whatever the SaaS needs) uses the same backend.
 
 ### 5. Rate Limiting Is In-Memory
 
@@ -112,7 +114,7 @@ No queue (BullMQ, etc.) or scheduled task system. Most SaaS products need this f
 | 1 | Lazy loading + code splitting on frontend | Bundle size at 40 pages |
 | 2 | Break App.tsx into individual page files | Developer velocity |
 | 3 | React Error Boundary | Resilience |
-| 4 | Abstract file storage (S3/R2) | Multi-instance deployments |
+| 4 | Revisit file storage if moving beyond one server | Multi-instance deployments |
 | 5 | Production Dockerfile + CI/CD | Cannot ship without this |
 
 ### Strongly Recommended Before 30 Controllers
