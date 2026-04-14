@@ -10,7 +10,7 @@ export interface UpdateProfilePayload {
 }
 
 export async function getProfile(userId: string): Promise<UserResponse> {
-  return apiFetch<UserResponse>(`/api/users/${userId}`)
+  return apiFetch<UserResponse>(`/api/v1/users/${userId}`)
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<UserResponse> {
@@ -24,7 +24,7 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
     fd.append('avatar', payload.avatar, 'avatar.png')
   }
 
-  return apiFetch<UserResponse>('/api/users/me/profile', {
+  return apiFetch<UserResponse>('/api/v1/users/me/profile', {
     method: 'PATCH',
     body: fd,
   })

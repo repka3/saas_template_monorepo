@@ -48,7 +48,7 @@ describe('request logging', () => {
 
     const { app } = await import('../src/app.js')
 
-    const response = await request(app).get('/api/ping')
+    const response = await request(app).get('/api/v1/ping')
 
     expect(response.status).toBe(200)
 
@@ -62,7 +62,7 @@ describe('request logging', () => {
 
     expect(successLog).toMatchObject({
       method: 'GET',
-      url: '/api/ping',
+      url: '/api/v1/ping',
       statusCode: 200,
       responseTime: expect.any(Number),
       reqId: expect.any(String),

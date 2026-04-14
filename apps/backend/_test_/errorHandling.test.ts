@@ -37,7 +37,7 @@ beforeEach(() => {
 describe('error handling architecture', () => {
   describe('error response envelope', () => {
     it('includes requestId on all error responses', async () => {
-      const response = await request(app).get('/api/does-not-exist')
+      const response = await request(app).get('/api/v1/does-not-exist')
 
       expect(response.status).toBe(404)
       expect(response.body.error.requestId).toEqual(expect.any(String))
@@ -45,14 +45,14 @@ describe('error handling architecture', () => {
     })
 
     it('uses ERROR_CODES registry codes for not_found', async () => {
-      const response = await request(app).get('/api/does-not-exist')
+      const response = await request(app).get('/api/v1/does-not-exist')
 
       expect(response.body.error.code).toBe('not_found')
     })
 
     it('uses ERROR_CODES registry codes for payload_too_large', async () => {
       const response = await request(app)
-        .post('/api/ping')
+        .post('/api/v1/ping')
         .send({ payload: 'x'.repeat(120_000) })
 
       expect(response.status).toBe(413)
@@ -61,7 +61,7 @@ describe('error handling architecture', () => {
     })
 
     it('uses ERROR_CODES registry codes for invalid JSON', async () => {
-      const response = await request(app).post('/api/ping').set('Content-Type', 'application/json').send('{ invalid json }')
+      const response = await request(app).post('/api/v1/ping').set('Content-Type', 'application/json').send('{ invalid json }')
 
       expect(response.status).toBe(400)
       expect(response.body.error.code).toBe('invalid_json')
@@ -94,7 +94,7 @@ describe('error handling architecture', () => {
         },
       })
 
-      const response = await request(app).patch('/api/users/me/profile').set('Content-Type', 'multipart/form-data').field('removeAvatar', 'nope')
+      const response = await request(app).patch('/api/v1/users/me/profile').set('Content-Type', 'multipart/form-data').field('removeAvatar', 'nope')
 
       expect(response.status).toBe(400)
       expect(response.body.error.code).toBe('validation_error')
@@ -109,7 +109,7 @@ describe('error handling architecture', () => {
     })
 
     it('uses ERROR_CODES registry codes for unauthorized', async () => {
-      const response = await request(app).get('/api/dummy-private')
+      const response = await request(app).get('/api/v1/dummy-private')
 
       expect(response.status).toBe(401)
       expect(response.body.error.code).toBe('unauthorized')
@@ -119,13 +119,13 @@ describe('error handling architecture', () => {
   describe('request ID correlation', () => {
     it('echoes back a provided x-request-id', async () => {
       const traceId = 'test-trace-id-12345'
-      const response = await request(app).get('/api/does-not-exist').set('x-request-id', traceId)
+      const response = await request(app).get('/api/v1/does-not-exist').set('x-request-id', traceId)
 
       expect(response.body.error.requestId).toBe(traceId)
     })
 
     it('generates a UUID request ID when none provided', async () => {
-      const response = await request(app).get('/api/does-not-exist')
+      const response = await request(app).get('/api/v1/does-not-exist')
 
       const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
       expect(response.body.error.requestId).toMatch(uuidPattern)

@@ -67,4 +67,28 @@ describe('parseEnv', () => {
       expect(parsedEnv.AUTH_SIGNUP_MODE).toBe(mode)
     }
   })
+
+  it('allows prisma connection limit to be unset', () => {
+    const parsedEnv = parseEnv(validEnv)
+
+    expect(parsedEnv.PRISMA_CONNECTION_LIMIT).toBeUndefined()
+  })
+
+  it('parses prisma connection limit as a positive integer', () => {
+    const parsedEnv = parseEnv({
+      ...validEnv,
+      PRISMA_CONNECTION_LIMIT: '7',
+    })
+
+    expect(parsedEnv.PRISMA_CONNECTION_LIMIT).toBe(7)
+  })
+
+  it('rejects non-positive prisma connection limits', () => {
+    expect(() =>
+      parseEnv({
+        ...validEnv,
+        PRISMA_CONNECTION_LIMIT: '0',
+      }),
+    ).toThrow(/Invalid environment variables/)
+  })
 })

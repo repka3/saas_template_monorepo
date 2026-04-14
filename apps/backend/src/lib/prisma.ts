@@ -7,11 +7,19 @@ const globalForPrisma = globalThis as typeof globalThis & {
   prisma?: PrismaClient
 }
 
+export const buildPrismaPoolConfig = (connectionString: string, connectionLimit?: number) => {
+  const poolConfig = { connectionString } as { connectionString: string; max?: number }
+
+  if (connectionLimit !== undefined) {
+    poolConfig.max = connectionLimit
+  }
+
+  return poolConfig
+}
+
 const createPrismaClient = () =>
   new PrismaClient({
-    adapter: new PrismaPg({
-      connectionString: env.DATABASE_URL,
-    }),
+    adapter: new PrismaPg(buildPrismaPoolConfig(env.DATABASE_URL, env.PRISMA_CONNECTION_LIMIT)),
   })
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()

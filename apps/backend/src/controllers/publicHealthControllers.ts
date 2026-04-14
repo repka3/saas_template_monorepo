@@ -7,8 +7,6 @@ export const ping: RequestHandler = (_req, res) => {
   res.status(200).json({ status: 'ok' })
 }
 
-
-
 export const getPublicAuthConfig: RequestHandler<never, GetPublicAuthConfigResponse> = (_req, res) => {
   res.status(200).json({
     auth: {

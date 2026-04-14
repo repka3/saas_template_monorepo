@@ -68,3 +68,14 @@ export const profileMutationRateLimit = createRateLimitMiddleware({
   message: 'Too many profile updates',
   resolveKey: (req, res) => res.locals.auth?.user.id ?? getIpAddress(req),
 })
+
+export const loginAttemptRateLimit = createRateLimitMiddleware({
+  keyPrefix: 'login-attempt',
+  max: 5,
+  windowMs: 15 * 60_000,
+  message: 'Too many failed login attempts. Try again later.',
+  resolveKey: (req) => {
+    const email = req.body?.email
+    return typeof email === 'string' && email.length > 0 ? email : getIpAddress(req)
+  },
+})

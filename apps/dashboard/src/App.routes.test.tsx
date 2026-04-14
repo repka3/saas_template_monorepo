@@ -13,11 +13,19 @@ vi.mock('@/features/auth/public-auth-config-hooks', () => ({
   usePublicAuthConfigQuery: () => publicAuthConfigQueryMock(),
 }))
 
-vi.mock('@/routes/auth-pages', () => ({
+vi.mock('@/features/auth/login/page', () => ({
   LoginPage: () => <div>Login Page</div>,
+}))
+vi.mock('@/features/auth/register/page', () => ({
   RegisterRoute: () => <div>Register Page</div>,
+}))
+vi.mock('@/features/auth/forgot-password/page', () => ({
   ForgotPasswordPage: () => <div>Forgot Password Page</div>,
+}))
+vi.mock('@/features/auth/reset-password/page', () => ({
   ResetPasswordPage: () => <div>Reset Password Page</div>,
+}))
+vi.mock('@/features/auth/verify-email/page', () => ({
   VerifyEmailPage: () => <div>Verify Email Page</div>,
 }))
 

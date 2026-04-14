@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api-client'
 
-const getPublicAuthConfig = async (): Promise<GetPublicAuthConfigResponse> => apiFetch<GetPublicAuthConfigResponse>('/api/auth-config')
+const getPublicAuthConfig = async (): Promise<GetPublicAuthConfigResponse> => apiFetch<GetPublicAuthConfigResponse>('/api/v1/auth-config')
 
 export const publicAuthConfigKeys = {
   all: ['public-auth-config'] as const,

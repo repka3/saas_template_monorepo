@@ -197,12 +197,7 @@ beforeAll(async () => {
   ihdrData[11] = 0 // filter
   ihdrData[12] = 0 // interlace
   const ihdrCrc = crc32(Buffer.concat([Buffer.from('IHDR'), ihdrData]))
-  const ihdr = Buffer.concat([
-    Buffer.from([0x00, 0x00, 0x00, 0x0d]),
-    Buffer.from('IHDR'),
-    ihdrData,
-    ihdrCrc,
-  ])
+  const ihdr = Buffer.concat([Buffer.from([0x00, 0x00, 0x00, 0x0d]), Buffer.from('IHDR'), ihdrData, ihdrCrc])
   const iendCrc = crc32(Buffer.from('IEND'))
   const iend = Buffer.concat([Buffer.from([0x00, 0x00, 0x00, 0x00]), Buffer.from('IEND'), iendCrc])
   const minimalPng = Buffer.concat([pngSignature, ihdr, iend])
@@ -257,9 +252,9 @@ afterEach(async () => {
   await fs.rm(uploadsRoot, { recursive: true, force: true })
 })
 
-describe('GET /api/users/:id', () => {
+describe('GET /api/v1/users/:id', () => {
   it('rejects unauthenticated requests with 401', async () => {
-    const response = await request(app).get('/api/users/user-1')
+    const response = await request(app).get('/api/v1/users/user-1')
 
     expect(response.status).toBe(401)
     expect(response.body).toEqual({
@@ -274,7 +269,7 @@ describe('GET /api/users/:id', () => {
   it('rejects a normal user requesting a different user with 403', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).get('/api/users/other-user-id')
+    const response = await request(app).get('/api/v1/users/other-user-id')
 
     expect(response.status).toBe(403)
     expect(response.body).toEqual({
@@ -290,7 +285,7 @@ describe('GET /api/users/:id', () => {
     getSessionMock.mockResolvedValue(buildSession())
     getUserByIdMock.mockResolvedValue(null)
 
-    const response = await request(app).get('/api/users/user-1')
+    const response = await request(app).get('/api/v1/users/user-1')
 
     expect(response.status).toBe(404)
     expect(response.body).toEqual({
@@ -307,7 +302,7 @@ describe('GET /api/users/:id', () => {
     getSessionMock.mockResolvedValue(buildSession())
     getUserByIdMock.mockResolvedValue(dbUser)
 
-    const response = await request(app).get('/api/users/user-1')
+    const response = await request(app).get('/api/v1/users/user-1')
 
     expect(response.status).toBe(200)
     expect(response.body.user).toMatchObject({
@@ -326,7 +321,7 @@ describe('GET /api/users/:id', () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
     getUserByIdMock.mockResolvedValue(dbUser)
 
-    const response = await request(app).get('/api/users/other-user')
+    const response = await request(app).get('/api/v1/users/other-user')
 
     expect(response.status).toBe(200)
     expect(response.body.user).toMatchObject({
@@ -339,7 +334,7 @@ describe('GET /api/users/:id', () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
     getUserByIdMock.mockResolvedValue(null)
 
-    const response = await request(app).get('/api/users/does-not-exist')
+    const response = await request(app).get('/api/v1/users/does-not-exist')
 
     expect(response.status).toBe(404)
     expect(response.body).toEqual({
@@ -352,9 +347,9 @@ describe('GET /api/users/:id', () => {
   })
 })
 
-describe('GET /api/superadmin/users/:id', () => {
+describe('GET /api/v1/superadmin/users/:id', () => {
   it('rejects unauthenticated requests with 401', async () => {
-    const response = await request(app).get('/api/superadmin/users/user-2')
+    const response = await request(app).get('/api/v1/superadmin/users/user-2')
 
     expect(response.status).toBe(401)
     expect(getSuperadminUserByIdMock).not.toHaveBeenCalled()
@@ -363,7 +358,7 @@ describe('GET /api/superadmin/users/:id', () => {
   it('rejects authenticated non-superadmins with 403', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).get('/api/superadmin/users/user-2')
+    const response = await request(app).get('/api/v1/superadmin/users/user-2')
 
     expect(response.status).toBe(403)
     expect(response.body.error.message).toBe('Superadmin role required')
@@ -374,7 +369,7 @@ describe('GET /api/superadmin/users/:id', () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
     getSuperadminUserByIdMock.mockResolvedValue(buildSuperadminUser({ banned: true }))
 
-    const response = await request(app).get('/api/superadmin/users/user-2')
+    const response = await request(app).get('/api/v1/superadmin/users/user-2')
 
     expect(response.status).toBe(200)
     expect(getSuperadminUserByIdMock).toHaveBeenCalledWith('user-2')
@@ -386,9 +381,9 @@ describe('GET /api/superadmin/users/:id', () => {
   })
 })
 
-describe('GET /api/superadmin/users', () => {
+describe('GET /api/v1/superadmin/users', () => {
   it('rejects unauthenticated requests with 401', async () => {
-    const response = await request(app).get('/api/superadmin/users')
+    const response = await request(app).get('/api/v1/superadmin/users')
 
     expect(response.status).toBe(401)
     expect(listSuperadminUsersMock).not.toHaveBeenCalled()
@@ -397,7 +392,7 @@ describe('GET /api/superadmin/users', () => {
   it('rejects authenticated non-superadmins with 403', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).get('/api/superadmin/users')
+    const response = await request(app).get('/api/v1/superadmin/users')
 
     expect(response.status).toBe(403)
     expect(response.body.error.message).toBe('Superadmin role required')
@@ -411,7 +406,7 @@ describe('GET /api/superadmin/users', () => {
     })
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).get('/api/superadmin/users?page=2&pageSize=5&query=%20Ada%20')
+    const response = await request(app).get('/api/v1/superadmin/users?page=2&pageSize=5&query=%20Ada%20')
 
     expect(response.status).toBe(200)
     expect(listSuperadminUsersMock).toHaveBeenCalledWith({
@@ -428,11 +423,11 @@ describe('GET /api/superadmin/users', () => {
   })
 })
 
-describe('POST /api/superadmin/users', () => {
+describe('POST /api/v1/superadmin/users', () => {
   it('rejects authenticated non-superadmins with 403', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).post('/api/superadmin/users').send({
+    const response = await request(app).post('/api/v1/superadmin/users').send({
       email: 'person@example.com',
       name: 'Person Example',
       temporaryPassword: 'temporary-pass',
@@ -445,7 +440,7 @@ describe('POST /api/superadmin/users', () => {
   it('validates the temporary password length', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).post('/api/superadmin/users').send({
+    const response = await request(app).post('/api/v1/superadmin/users').send({
       email: 'person@example.com',
       name: 'Person Example',
       temporaryPassword: 'short-pass',
@@ -460,7 +455,7 @@ describe('POST /api/superadmin/users', () => {
     createSuperadminUserMock.mockResolvedValueOnce(buildSuperadminUser({ role: 'superadmin' }))
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).post('/api/superadmin/users').send({
+    const response = await request(app).post('/api/v1/superadmin/users').send({
       email: 'person@example.com',
       name: ' Person Example ',
       firstName: ' Person ',
@@ -496,11 +491,11 @@ describe('POST /api/superadmin/users', () => {
   })
 })
 
-describe('PATCH /api/superadmin/users/:id', () => {
+describe('PATCH /api/v1/superadmin/users/:id', () => {
   it('rejects self-service requests from non-superadmins', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).patch('/api/superadmin/users/user-2').send({
+    const response = await request(app).patch('/api/v1/superadmin/users/user-2').send({
       name: 'Updated User',
     })
 
@@ -511,7 +506,7 @@ describe('PATCH /api/superadmin/users/:id', () => {
   it('validates disableReason combinations before calling the service', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/superadmin/users/user-2').send({
+    const response = await request(app).patch('/api/v1/superadmin/users/user-2').send({
       disableReason: 'Nope',
     })
 
@@ -523,7 +518,7 @@ describe('PATCH /api/superadmin/users/:id', () => {
   it('updates a user for a superadmin', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/superadmin/users/user-2').send({
+    const response = await request(app).patch('/api/v1/superadmin/users/user-2').send({
       email: 'updated@example.com',
       firstName: ' Ada ',
       disabled: true,
@@ -552,7 +547,7 @@ describe('PATCH /api/superadmin/users/:id', () => {
     updateSuperadminUserMock.mockRejectedValueOnce(new Error('db write failed'))
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/superadmin/users/user-2').send({
+    const response = await request(app).patch('/api/v1/superadmin/users/user-2').send({
       temporaryPassword: 'temporary-pass',
     })
 
@@ -561,11 +556,11 @@ describe('PATCH /api/superadmin/users/:id', () => {
   })
 })
 
-describe('PATCH /api/superadmin/users/:id/role', () => {
+describe('PATCH /api/v1/superadmin/users/:id/role', () => {
   it('rejects authenticated non-superadmins with 403', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).patch('/api/superadmin/users/user-2/role').send({
+    const response = await request(app).patch('/api/v1/superadmin/users/user-2/role').send({
       role: 'superadmin',
     })
 
@@ -576,7 +571,7 @@ describe('PATCH /api/superadmin/users/:id/role', () => {
   it('validates the requested role before calling the service', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/superadmin/users/user-2/role').send({
+    const response = await request(app).patch('/api/v1/superadmin/users/user-2/role').send({
       role: 'owner',
     })
 
@@ -588,7 +583,7 @@ describe('PATCH /api/superadmin/users/:id/role', () => {
   it('updates a user role for a superadmin', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).patch('/api/superadmin/users/user-2/role').send({
+    const response = await request(app).patch('/api/v1/superadmin/users/user-2/role').send({
       role: 'superadmin',
     })
 
@@ -609,9 +604,9 @@ describe('PATCH /api/superadmin/users/:id/role', () => {
   })
 })
 
-describe('PATCH /api/users/me/profile', () => {
+describe('PATCH /api/v1/users/me/profile', () => {
   it('rejects unauthenticated requests with 401', async () => {
-    const response = await request(app).patch('/api/users/me/profile').field('firstName', 'Updated')
+    const response = await request(app).patch('/api/v1/users/me/profile').field('firstName', 'Updated')
 
     expect(response.status).toBe(401)
     expect(updateMyProfileMock).not.toHaveBeenCalled()
@@ -627,7 +622,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
     updateMyProfileMock.mockResolvedValue(dbUser)
 
-    const response = await request(app).patch('/api/users/me/profile').field('firstName', ' Ada ').field('lastName', ' Lovelace ')
+    const response = await request(app).patch('/api/v1/users/me/profile').field('firstName', ' Ada ').field('lastName', ' Lovelace ')
 
     expect(response.status).toBe(200)
     expect(updateMyProfileMock).toHaveBeenCalledWith('user-1', {
@@ -657,7 +652,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
     updateMyProfileMock.mockResolvedValue(dbUser)
 
-    const response = await request(app).patch('/api/users/me/profile').field('firstName', '   ').field('lastName', '')
+    const response = await request(app).patch('/api/v1/users/me/profile').field('firstName', '   ').field('lastName', '')
 
     expect(response.status).toBe(200)
     expect(updateMyProfileMock).toHaveBeenCalledWith('user-1', {
@@ -683,7 +678,7 @@ describe('PATCH /api/users/me/profile', () => {
     updateMyProfileMock.mockResolvedValue(dbUser)
 
     const response = await request(app)
-      .patch('/api/users/me/profile')
+      .patch('/api/v1/users/me/profile')
       .attach('avatar', validAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
 
     expect(response.status).toBe(200)
@@ -709,7 +704,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
 
     const response = await request(app)
-      .patch('/api/users/me/profile')
+      .patch('/api/v1/users/me/profile')
       .attach('avatar', validAvatarFixture, { filename: '../../profile-shell.png', contentType: 'image/png' })
 
     expect(response.status).toBe(200)
@@ -738,7 +733,7 @@ describe('PATCH /api/users/me/profile', () => {
     updateMyProfileMock.mockResolvedValue(dbUser)
 
     const response = await request(app)
-      .patch('/api/users/me/profile')
+      .patch('/api/v1/users/me/profile')
       .attach('avatar', webpAvatarFixture, { filename: 'avatar.webp', contentType: 'image/webp' })
 
     expect(response.status).toBe(200)
@@ -756,7 +751,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
     updateMyProfileMock.mockResolvedValue(dbUser)
 
-    const response = await request(app).patch('/api/users/me/profile').field('removeAvatar', 'true')
+    const response = await request(app).patch('/api/v1/users/me/profile').field('removeAvatar', 'true')
 
     expect(response.status).toBe(200)
     expect(updateMyProfileMock).toHaveBeenCalledWith('user-1', {
@@ -773,7 +768,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
 
     const response = await request(app)
-      .patch('/api/users/me/profile')
+      .patch('/api/v1/users/me/profile')
       .field('removeAvatar', 'true')
       .attach('avatar', validAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
 
@@ -790,7 +785,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
 
     const response = await request(app)
-      .patch('/api/users/me/profile')
+      .patch('/api/v1/users/me/profile')
       .attach('avatar', invalidAvatarFixture, { filename: 'avatar.txt', contentType: 'text/plain' })
 
     expect(response.status).toBe(400)
@@ -805,7 +800,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
 
     const response = await request(app)
-      .patch('/api/users/me/profile')
+      .patch('/api/v1/users/me/profile')
       .attach('avatar', oversizedAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
 
     expect(response.status).toBe(413)
@@ -819,7 +814,7 @@ describe('PATCH /api/users/me/profile', () => {
   it('rejects requests with no effective changes', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).patch('/api/users/me/profile').field('removeAvatar', 'false')
+    const response = await request(app).patch('/api/v1/users/me/profile').field('removeAvatar', 'false')
 
     expect(response.status).toBe(400)
     expect(response.body.error).toMatchObject({
@@ -833,7 +828,7 @@ describe('PATCH /api/users/me/profile', () => {
     getSessionMock.mockResolvedValue(buildSession())
 
     const response = await request(app)
-      .patch('/api/users/me/profile')
+      .patch('/api/v1/users/me/profile')
       .field('firstName', 'x'.repeat(101))
       .attach('avatar', validAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
 
@@ -849,7 +844,9 @@ describe('PATCH /api/users/me/profile', () => {
   it('maps Multer field errors into the API error envelope', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).patch('/api/users/me/profile').attach('photo', validAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
+    const response = await request(app)
+      .patch('/api/v1/users/me/profile')
+      .attach('photo', validAvatarFixture, { filename: 'avatar.png', contentType: 'image/png' })
 
     expect(response.status).toBe(400)
     expect(response.body).toEqual({

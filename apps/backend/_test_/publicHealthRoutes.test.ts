@@ -37,9 +37,9 @@ beforeEach(() => {
   getSessionMock.mockResolvedValue(null)
 })
 
-describe('GET /api/auth-config', () => {
+describe('GET /api/v1/auth-config', () => {
   it('returns public auth configuration', async () => {
-    const response = await request(app).get('/api/auth-config')
+    const response = await request(app).get('/api/v1/auth-config')
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual({
@@ -51,7 +51,7 @@ describe('GET /api/auth-config', () => {
   })
 
   it('does not expose the old public test error route', async () => {
-    const response = await request(app).get('/api/test_error_500')
+    const response = await request(app).get('/api/v1/test_error_500')
 
     expect(response.status).toBe(404)
   })

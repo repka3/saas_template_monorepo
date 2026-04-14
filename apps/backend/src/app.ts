@@ -14,6 +14,7 @@ import { env } from './lib/env.js'
 import { logger } from './lib/logger.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { avatarDir } from './middleware/upload-avatar.js'
+import { loginAttemptRateLimit } from './middleware/rate-limit.js'
 import { dummyPrivateRouter } from './routes/dummyPrivateRoutes.js'
 import { publicHealthRouter } from './routes/publicHealthRoutes.js'
 import { userRouter } from './routes/userRoutes.js'
@@ -64,22 +65,39 @@ app.use(
   }),
 )
 
-app.use(helmet())
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", env.CORS_ORIGIN],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+  }),
+)
 
 // Keep Better Auth mounted before the custom guarded routes so native auth flows
 // like `/api/auth/change-password` still work even when app routes reject
 // `mustChangePassword` users.
+app.post('/api/auth/sign-in/email', loginAttemptRateLimit)
 app.all('/api/auth/*splat', toNodeHandler(auth))
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }))
 app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT, parameterLimit: 100 }))
 app.use('/uploads/avatars', express.static(avatarDir))
 
-app.use('/api', publicHealthRouter)
-app.use('/api', userRouter)
+app.use('/api/v1', publicHealthRouter)
+app.use('/api/v1', userRouter)
 
 if (env.NODE_ENV !== 'production') {
-  app.use('/api', dummyPrivateRouter)
+  app.use('/api/v1', dummyPrivateRouter)
 }
 
 app.use((req, res) => {

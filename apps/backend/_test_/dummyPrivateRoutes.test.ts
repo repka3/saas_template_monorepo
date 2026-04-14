@@ -90,8 +90,8 @@ describe('dummy private routes', () => {
     expect(app.get('trust proxy')).toBe(2)
   })
 
-  it('rejects GET /api/dummy-private without a session', async () => {
-    const response = await request(app).get('/api/dummy-private')
+  it('rejects GET /api/v1/dummy-private without a session', async () => {
+    const response = await request(app).get('/api/v1/dummy-private')
 
     expect(response.status).toBe(401)
     expect(response.body).toEqual({
@@ -103,8 +103,8 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('rejects GET /api/dummy-superadmin without a session', async () => {
-    const response = await request(app).get('/api/dummy-superadmin')
+  it('rejects GET /api/v1/dummy-superadmin without a session', async () => {
+    const response = await request(app).get('/api/v1/dummy-superadmin')
 
     expect(response.status).toBe(401)
     expect(response.body).toEqual({
@@ -116,10 +116,10 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('allows GET /api/dummy-private for an authenticated user', async () => {
+  it('allows GET /api/v1/dummy-private for an authenticated user', async () => {
     getSessionMock.mockResolvedValue(buildSession())
 
-    const response = await request(app).get('/api/dummy-private')
+    const response = await request(app).get('/api/v1/dummy-private')
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual({
@@ -128,10 +128,10 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('rejects GET /api/dummy-superadmin for an authenticated user without the role', async () => {
+  it('rejects GET /api/v1/dummy-superadmin for an authenticated user without the role', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'user' }))
 
-    const response = await request(app).get('/api/dummy-superadmin')
+    const response = await request(app).get('/api/v1/dummy-superadmin')
 
     expect(response.status).toBe(403)
     expect(response.body).toEqual({
@@ -143,10 +143,10 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('allows GET /api/dummy-superadmin for an authenticated superadmin', async () => {
+  it('allows GET /api/v1/dummy-superadmin for an authenticated superadmin', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin' }))
 
-    const response = await request(app).get('/api/dummy-superadmin')
+    const response = await request(app).get('/api/v1/dummy-superadmin')
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual({
@@ -155,10 +155,10 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('rejects GET /api/dummy-private for a banned authenticated user', async () => {
+  it('rejects GET /api/v1/dummy-private for a banned authenticated user', async () => {
     getSessionMock.mockResolvedValue(buildSession({ banned: true }))
 
-    const response = await request(app).get('/api/dummy-private')
+    const response = await request(app).get('/api/v1/dummy-private')
 
     expect(response.status).toBe(403)
     expect(response.body).toEqual({
@@ -170,10 +170,10 @@ describe('dummy private routes', () => {
     })
   })
 
-  it('rejects GET /api/dummy-superadmin for a banned authenticated superadmin', async () => {
+  it('rejects GET /api/v1/dummy-superadmin for a banned authenticated superadmin', async () => {
     getSessionMock.mockResolvedValue(buildSession({ role: 'superadmin', banned: true }))
 
-    const response = await request(app).get('/api/dummy-superadmin')
+    const response = await request(app).get('/api/v1/dummy-superadmin')
 
     expect(response.status).toBe(403)
     expect(response.body).toEqual({
@@ -188,7 +188,7 @@ describe('dummy private routes', () => {
   it('rejects protected routes when password change is required', async () => {
     getSessionMock.mockResolvedValue(buildSession({ mustChangePassword: true }))
 
-    const response = await request(app).get('/api/dummy-private')
+    const response = await request(app).get('/api/v1/dummy-private')
 
     expect(response.status).toBe(403)
     expect(response.body).toEqual({
@@ -202,7 +202,7 @@ describe('dummy private routes', () => {
 
   it('rejects oversized JSON payloads before route handling', async () => {
     const response = await request(app)
-      .post('/api/ping')
+      .post('/api/v1/ping')
       .send({
         payload: 'x'.repeat(120_000),
       })
@@ -218,7 +218,7 @@ describe('dummy private routes', () => {
   })
 
   it('returns requestId for missing routes', async () => {
-    const response = await request(app).get('/api/does-not-exist')
+    const response = await request(app).get('/api/v1/does-not-exist')
 
     expect(response.status).toBe(404)
     expect(response.body).toEqual({

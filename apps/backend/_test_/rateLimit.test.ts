@@ -32,17 +32,17 @@ const { app } = await import('../src/app.js')
 
 describe('rate limiting', () => {
   it('uses the standard express-rate-limit handler for public routes', async () => {
-    let response = await request(app).get('/api/ping')
+    let response = await request(app).get('/api/v1/ping')
 
     expect(response.status).toBe(200)
 
     for (let index = 0; index < 119; index += 1) {
-      response = await request(app).get('/api/ping')
+      response = await request(app).get('/api/v1/ping')
     }
 
     expect(response.status).toBe(200)
 
-    response = await request(app).get('/api/ping')
+    response = await request(app).get('/api/v1/ping')
 
     expect(response.status).toBe(429)
     expect(response.body).toEqual({
