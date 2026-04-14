@@ -7,7 +7,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePublicAuthConfigQuery } from '@/features/auth/public-auth-config-hooks'
-import { useAuth } from '@/hooks/use-auth'
 import { authClient, getEntryPathForUser, toAbsoluteAppUrl } from '@/lib/auth-client'
 import { AuthFeedback, AuthRouteLayout, RouteLinkButton } from '@/routes/route-shell'
 
